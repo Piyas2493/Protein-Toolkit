@@ -46,11 +46,16 @@ def test_load_smiles_branch_and_ring():
 
 
 def test_load_smiles_brackets():
-    lig = load_ligand(smiles="[NH4+].[Cl-]")
-    assert lig.atom_count() == 2
+    # A disconnected counterion has no bond tying its 3D position to
+    # the real molecule once embedded, which silently breaks downstream
+    # docking geometry — load_ligand keeps only the largest fragment
+    # (standard salt-stripping), so only the cation (4 heavy atoms)
+    # survives, not the 1-atom chloride.
+    lig = load_ligand(smiles="CC(C)[NH3+].[Cl-]")
+    assert lig.atom_count() == 4
     charges = [a.formal_charge for a in lig.atoms]
     assert 1 in charges
-    assert -1 in charges
+    assert -1 not in charges
 
 
 def test_load_smiles_invalid_raises():
@@ -89,9 +94,12 @@ def test_validate_substituted_fused_heteroaromatic():
 
 
 def test_validate_charged_ligand_warning():
-    lig = load_ligand(smiles="[NH4+].[Cl-]")
+    # After salt-stripping, only the cation remains — its charge is the
+    # ligand's real net charge, not "neutralized" by the dropped
+    # chloride counterion.
+    lig = load_ligand(smiles="CC(C)[NH3+].[Cl-]")
     rep = LigandValidator().validate(lig)
-    assert rep.net_charge == 0  # overall neutral salt
+    assert rep.net_charge == 1
     assert any(a.formal_charge != 0 for a in lig.atoms)
 
 

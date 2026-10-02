@@ -191,17 +191,47 @@ def _parse_vina_cli_stdout(stdout: str, ligand) -> List[DockedPose]:
     return poses
 
 
-def _ligand_to_pdbqt(ligand) -> str:
-    """Convert the internal Ligand object to a minimal PDBQT block.
+def _ligand_to_pdbqt_meeko(smiles: str) -> str:
+    """Real PDBQT via meeko: embed + MMFF-optimize a 3D conformer, then
+    let meeko derive the torsion tree and partial charges. Raises
+    ImportError if rdkit/meeko aren't available (caller falls back)."""
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+    from meeko import MoleculePreparation, PDBQTWriterLegacy
 
-    This is a placeholder — real workflows should use MGLTools /
-    ADFRsuite or the `meeko` package to produce proper PDBQT with
-    charges and rotatable-bond trees. We emit a minimal valid format
-    so the adapter compiles and can be wired into pipelines: the whole
-    ligand as one rigid body (ROOT/ENDROOT, zero torsions) — Vina
-    requires that wrapper on ligand PDBQT or it refuses to parse the
-    file at all.
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        raise ValueError(f"Could not re-parse ligand SMILES: {smiles!r}")
+    mol = Chem.AddHs(mol)
+    AllChem.EmbedMolecule(mol, randomSeed=42)
+    AllChem.MMFFOptimizeMolecule(mol)
+
+    setups = MoleculePreparation().prepare(mol)
+    pdbqt_string, is_ok, err = PDBQTWriterLegacy.write_string(setups[0])
+    if not is_ok:
+        raise ValueError(f"meeko could not write PDBQT: {err}")
+    return pdbqt_string
+
+
+def _ligand_to_pdbqt(ligand) -> str:
+    """Convert the internal Ligand object to PDBQT.
+
+    Prefers `meeko` (the AutoDock/Vina team's own RDKit-to-PDBQT
+    preparer): real rotatable-bond torsion trees and Gasteiger-like
+    partial charges, not one rigid, un-optimized conformer. Docking a
+    whole flexible molecule as a single rigid body routinely produces
+    clashing poses or none at all — this isn't a cosmetic gap.
+
+    Falls back to a minimal rigid-body placeholder (no torsions, zero
+    charges) when meeko isn't installed or the ligand has no SMILES
+    (e.g. loaded from SDF/MOL2/PDB) to build one from.
     """
+    if ligand.smiles:
+        try:
+            return _ligand_to_pdbqt_meeko(ligand.smiles)
+        except ImportError:
+            pass
+
     lines = ["ROOT"]
     for a in ligand.atoms:
         # PDBQT atom record
@@ -219,10 +249,12 @@ def _ligand_to_pdbqt(ligand) -> str:
         #  61-66 tempFactor
         #  71-76 charge (%6.3f — we don't compute real Gasteiger charges)
         #  78-79 AutoDock atom type (%-2s, left-justified)
+        # AutoDock atom types are case-sensitive (e.g. "Zn", not "ZN").
+        atom_type = a.element.capitalize()
         lines.append(
             f"ATOM  {a.serial:>5d} {a.element:<4s} UNL X   1    "
             f"{a.x:>8.3f}{a.y:>8.3f}{a.z:>8.3f}"
-            f"{1.00:>6.2f}{0.00:>6.2f}    {0.0:>6.3f} {a.element:<2s}"
+            f"{1.00:>6.2f}{0.00:>6.2f}    {0.0:>6.3f} {atom_type:<2s}"
         )
     lines.append("ENDROOT")
     lines.append("TORSDOF 0")

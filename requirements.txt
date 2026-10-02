@@ -7,3 +7,5 @@ xgboost>=1.7.6
 matplotlib>=3.7.2
 pytest>=7.4.0
 rdkit>=2024.3.1
+meeko>=0.8.0
+gemmi>=0.7.0
