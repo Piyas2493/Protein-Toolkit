@@ -75,6 +75,19 @@ def test_validate_simple_alcohol():
     assert rep.molecular_weight < 50
 
 
+def test_validate_substituted_fused_heteroaromatic():
+    # Caffeine: N-methylated fused imidazole/pyrimidinedione rings.
+    # The flat "1.5 per aromatic bond" valence sum falsely flags its
+    # ring nitrogens as over-valent; RDKit already validated this
+    # structure during parsing, so chemistry_verified must skip the
+    # redundant (and here, wrong) heuristic re-check.
+    lig = load_ligand(smiles="CN1C=NC2=C1C(=O)N(C(=O)N2C)C")
+    assert lig.chemistry_verified is True
+    rep = LigandValidator().validate(lig)
+    assert rep.chemical_valid is True
+    assert rep.errors == []
+
+
 def test_validate_charged_ligand_warning():
     lig = load_ligand(smiles="[NH4+].[Cl-]")
     rep = LigandValidator().validate(lig)

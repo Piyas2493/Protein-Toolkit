@@ -57,6 +57,16 @@ evidence fusion):
 python pipeline.py --pdb 1LYZ --smiles "CC(=O)Oc1ccccc1C(=O)O" --engine vina
 ```
 
+**Virtual screening** (which of *many* candidate ligands best fits this
+receptor? — docks a whole library and ranks by score; receptor prep/pocket
+detection run once, not once per candidate):
+
+```bash
+python screen.py --pdb 1LYZ --library candidates.smi --engine vina --top 10
+```
+
+`candidates.smi` is a text file, one candidate per line: `SMILES [name]`.
+
 **Batch triage** (screen many sequences from a FASTA file, ranked by
 combined confidence, no structure needed):
 
@@ -94,6 +104,7 @@ ml/          EC classifier training (RandomForest + XGBoost), calibration
 pipeline.py  full sequence + structure + docking + evidence-fusion CLI
 main.py      sequence (+ optional structure) analysis CLI
 triage.py    batch sequence-only screening CLI
+screen.py    virtual screening: rank a ligand library against one receptor
 ```
 
 ## Limitations

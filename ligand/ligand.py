@@ -78,6 +78,11 @@ class Ligand:
     source_format: str = ""
     source_path: Optional[str] = None
     smiles: Optional[str] = None
+    # True when RDKit parsed and sanitized this structure — its own
+    # valence/aromaticity model is correct where our flattened bond-order
+    # sum (1.5 per aromatic bond, regardless of lone-pair donation) is
+    # not; see LigandValidator's valence check.
+    chemistry_verified: bool = False
     provenance: List[Dict[str, Any]] = field(default_factory=list)
     created_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
@@ -638,6 +643,7 @@ def load_ligand(
 
     if fmt == "smiles":
         # Prefer RDKit if installed
+        used_rdkit = False
         try:
             from rdkit import Chem  # type: ignore
             from rdkit.Chem import AllChem  # type: ignore
@@ -645,6 +651,7 @@ def load_ligand(
             if mol is None or mol.GetNumAtoms() == 0:
                 raise LigandLoadError(f"RDKit could not parse SMILES: {body!r}")
             atoms, bonds = _rdkit_to_records(mol)
+            used_rdkit = True
         except ImportError:
             atoms, bonds = _parse_smiles_fallback(body)
         lig_name = name or "ligand"
@@ -654,6 +661,7 @@ def load_ligand(
             source_format="smiles",
             source_path=path_str,
             smiles=body,
+            chemistry_verified=used_rdkit,
         )
         lig.record("loaded", format="smiles", length=len(body))
         return lig
