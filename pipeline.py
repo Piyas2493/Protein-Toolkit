@@ -78,6 +78,56 @@ class FinalReport:
 # Top-level pipeline
 # ----------------------------------------------------------------------
 
+def dock_ligand_against_receptor(
+    ligand,
+    prep,
+    pockets,
+    *,
+    docking_engine: str = "mock",
+    n_poses: int = 5,
+    seed: int = 42,
+    active_residues: Optional[List[Any]] = None,
+):
+    """Compatibility-assess + dock one already-prepared ligand against an
+    already-prepared receptor (receptor prep / pocket detection are the
+    expensive, ligand-independent steps — callers that screen many
+    ligands against the same receptor should do those once and call this
+    per candidate, not re-run the full `run_analysis` pipeline each time).
+
+    Returns (compat, docking_result_or_None, pose_report_or_None).
+    """
+    compat = CompatibilityEngine().assess(
+        ligand, pockets, predicted_active_residues=active_residues,
+    )
+
+    if not compat.best_pocket_id:
+        return compat, None, None
+
+    best_pocket = next(p for p in pockets
+                       if p.pocket_id == compat.best_pocket_id)
+
+    # Real engines (Vina/GNINA) require receptor input in PDBQT, not the
+    # raw PDB — write one from the already-parsed, chain-selected
+    # receptor atoms. Harmless no-op cost for the mock engine.
+    import tempfile
+    receptor_pdbqt = tempfile.mktemp(suffix="_receptor.pdbqt")
+    write_receptor_pdbqt(prep.receptor_atoms, receptor_pdbqt)
+
+    result = DockingManager(engine=docking_engine).dock(
+        DockingRequest(
+            receptor_path=receptor_pdbqt,
+            ligand=ligand,
+            box=best_pocket.box,
+            n_poses=n_poses,
+            seed=seed,
+        )
+    )
+    pose_report = PoseAnalyzer().analyze(
+        result, prep.receptor_atoms, best_pocket, active_residues,
+    )
+    return compat, result, pose_report
+
+
 def run_analysis(
     *,
     fasta_path: Optional[str] = None,
@@ -154,49 +204,22 @@ def run_analysis(
     report.target["n_residues"] = len(prep.receptor_atoms)
     report.target["n_pockets"] = len(pockets)
 
-    # ------------------------------------------------------------------
-    # Compatibility
-    # ------------------------------------------------------------------
-    compat = CompatibilityEngine().assess(
-        lig_prep.ligand, pockets, predicted_active_residues=active_residues,
+    compat, result, pose_report = dock_ligand_against_receptor(
+        lig_prep.ligand, prep, pockets,
+        docking_engine=docking_engine, n_poses=n_poses, seed=seed,
+        active_residues=active_residues,
     )
     report.best_pocket = (
         compat.pockets[0].pocket.to_dict()
         if compat.pockets else None
     )
 
-    # ------------------------------------------------------------------
-    # Docking (using best pocket box, if any)
-    # ------------------------------------------------------------------
-    pose_report = None
-    if compat.best_pocket_id:
-        best_pocket = next(p for p in pockets
-                          if p.pocket_id == compat.best_pocket_id)
-
-        # Real engines (Vina/GNINA) require receptor input in PDBQT, not
-        # the raw PDB — write one from the already-parsed, chain-selected
-        # receptor atoms. Harmless no-op cost for the mock engine.
-        import tempfile
-        receptor_pdbqt = tempfile.mktemp(suffix="_receptor.pdbqt")
-        write_receptor_pdbqt(prep.receptor_atoms, receptor_pdbqt)
-
-        result = DockingManager(engine=docking_engine).dock(
-            DockingRequest(
-                receptor_path=receptor_pdbqt,
-                ligand=lig_prep.ligand,
-                box=best_pocket.box,
-                n_poses=n_poses,
-                seed=seed,
-            )
-        )
+    if pose_report is not None:
         report.docking = {
             "engine": result.engine,
             "n_poses": len(result.poses),
             "warnings": result.warnings,
         }
-        pose_report = PoseAnalyzer().analyze(
-            result, prep.receptor_atoms, best_pocket, active_residues,
-        )
         if pose_report.ranked:
             best = pose_report.ranked[0]
             report.docking["best_pose"] = best.pose_id

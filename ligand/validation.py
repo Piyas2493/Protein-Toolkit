@@ -145,8 +145,13 @@ class LigandValidator:
                     f"Bond references unknown atom serials: {b.a1}-{b.a2}."
                 )
 
-        # Valence check (heuristic — ignores formal charge vs. bond order
-        # interactions in unusual oxidation states; flagged as warning)
+        # Valence check (heuristic — flat bond-order summing double-counts
+        # aromatic ring bonds on substituted pyrrole-type heteroatoms,
+        # e.g. caffeine's N-methyl imidazole nitrogens; see
+        # Ligand.chemistry_verified). Skip it when RDKit already parsed
+        # and sanitized the structure — that already enforces correct
+        # valence/aromaticity far better than a flattened bond-order sum
+        # can. Metal detection still applies either way.
         for atom in ligand.atoms:
             elem = atom.element
             if elem not in _DEFAULT_VALENCE:
@@ -158,6 +163,8 @@ class LigandValidator:
                         )
                     continue
                 report.warnings.append(f"Unknown element '{elem}', skipping valence check.")
+                continue
+            if ligand.chemistry_verified:
                 continue
             max_v = _DEFAULT_VALENCE[elem]
             current = sum(b.order for b in ligand.bonds if b.a1 == atom.serial or b.a2 == atom.serial)

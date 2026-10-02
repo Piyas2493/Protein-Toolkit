@@ -509,5 +509,6 @@ def _deep_copy_ligand(lig: Ligand) -> Ligand:
         source_format=lig.source_format,
         source_path=lig.source_path,
         smiles=lig.smiles,
+        chemistry_verified=lig.chemistry_verified,
     )
     return new
