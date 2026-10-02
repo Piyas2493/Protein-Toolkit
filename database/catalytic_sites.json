@@ -1,0 +1,37 @@
+[
+    {
+        "name": "Serine Protease Triad",
+        "residues": ["SER", "HIS", "ASP"],
+        "pattern": "S-H-D",
+        "function": "Peptide bond hydrolysis",
+        "enzyme_class": "Hydrolase",
+        "confidence": 0.95
+    },
+
+    {
+        "name": "Cysteine Protease Dyad",
+        "residues": ["CYS", "HIS"],
+        "pattern": "C-H",
+        "function": "Proteolysis",
+        "enzyme_class": "Hydrolase",
+        "confidence": 0.93
+    },
+
+    {
+        "name": "Aspartic Protease",
+        "residues": ["ASP", "ASP"],
+        "pattern": "D-D",
+        "function": "Acid catalysis",
+        "enzyme_class": "Hydrolase",
+        "confidence": 0.92
+    },
+
+    {
+        "name": "Metalloprotease",
+        "residues": ["HIS", "GLU", "HIS"],
+        "pattern": "H-E-H",
+        "function": "Metal-assisted catalysis",
+        "enzyme_class": "Metalloprotease",
+        "confidence": 0.95
+    }
+]

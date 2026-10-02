@@ -1,0 +1,76 @@
+[
+    {
+        "class":"Oxidoreductase",
+        "keywords":[
+            "dehydrogenase",
+            "oxidase",
+            "reductase"
+        ],
+        "motifs":[
+            "Rossmann Fold"
+        ],
+        "ligands":[
+            "NAD",
+            "FAD"
+        ]
+    },
+
+    {
+        "class":"Transferase",
+        "keywords":[
+            "kinase",
+            "transferase"
+        ],
+        "motifs":[
+            "Walker A ATP-binding"
+        ],
+        "ligands":[
+            "ATP"
+        ]
+    },
+
+    {
+        "class":"Hydrolase",
+        "keywords":[
+            "protease",
+            "esterase",
+            "lipase",
+            "peptidase"
+        ],
+        "motifs":[
+            "HEXXH Metalloprotease"
+        ],
+        "ligands":[
+            "Zn2+"
+        ]
+    },
+
+    {
+        "class":"Ligase",
+        "keywords":[
+            "ligase"
+        ],
+        "motifs":[],
+        "ligands":[
+            "ATP"
+        ]
+    },
+
+    {
+        "class":"Lyase",
+        "keywords":[
+            "lyase"
+        ],
+        "motifs":[],
+        "ligands":[]
+    },
+
+    {
+        "class":"Isomerase",
+        "keywords":[
+            "isomerase"
+        ],
+        "motifs":[],
+        "ligands":[]
+    }
+]
