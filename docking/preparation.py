@@ -165,20 +165,80 @@ class ReceptorPreparation:
         return prep
 
 
+# ----------------------------------------------------------------------
+# AutoDock receptor atom typing
+# ----------------------------------------------------------------------
+#
+# Standard amino acids are a fixed, known vocabulary (20 residues, a
+# handful of atom names each) — unlike arbitrary ligand SMILES, this
+# doesn't need to be computed, just looked up. AutoDock4 types that
+# matter for H-bonding/aromaticity (the rest fall through to the plain
+# element symbol):
+#   A  = aromatic ring carbon (vs "C" aliphatic)
+#   OA = H-bond-accepting oxygen
+#   NA = H-bond-accepting nitrogen
+#   SA = H-bond-accepting sulfur
+#
+# No receptor hydrogens are present (X-ray structures don't resolve
+# them), so donor character can't be expressed either way — only
+# acceptor typing is meaningful here.
+
+# Ring carbons only; ring NITROGENS are typed via _ACCEPTOR_NITROGENS
+# below (AutoDock has no separate "aromatic nitrogen" type).
+_AROMATIC_RING_CARBONS = {
+    "PHE": {"CG", "CD1", "CD2", "CE1", "CE2", "CZ"},
+    "TYR": {"CG", "CD1", "CD2", "CE1", "CE2", "CZ"},
+    "TRP": {"CG", "CD1", "CD2", "CE2", "CE3", "CZ2", "CZ3", "CH2"},
+    "HIS": {"CG", "CD2", "CE1"},
+}
+
+# Imidazole nitrogens: whichever tautomer, one accepts — treat both as
+# acceptor-capable rather than guess a specific protonation state.
+_ACCEPTOR_NITROGENS = {
+    "HIS": {"ND1", "NE2"},
+}
+
+# Residues whose sulfur is commonly typed as acceptor-capable by
+# AutoDock preparers (Cys thiol / Met thioether); everything else
+# falls through to plain "S".
+_ACCEPTOR_SULFUR_RESIDUES = {"CYS", "MET"}
+
+
+def _autodock_atom_type(atom: Atom) -> str:
+    element = atom.element.capitalize()
+
+    if element == "C":
+        ring = _AROMATIC_RING_CARBONS.get(atom.residue_name, ())
+        return "A" if atom.atom_name in ring else "C"
+
+    if element == "O":
+        # Backbone carbonyl, hydroxyl, carboxylate — essentially every
+        # oxygen in a standard amino acid is an H-bond acceptor.
+        return "OA"
+
+    if element == "N":
+        acceptors = _ACCEPTOR_NITROGENS.get(atom.residue_name, ())
+        return "NA" if atom.atom_name in acceptors else "N"
+
+    if element == "S":
+        return "SA" if atom.residue_name in _ACCEPTOR_SULFUR_RESIDUES else "S"
+
+    # Metals and anything else: plain element symbol (already correctly
+    # cased above), e.g. "Zn", "Mg", "Fe".
+    return element
+
+
 def write_receptor_pdbqt(atoms: List[Atom], out_path: str) -> str:
     """Write a minimal rigid-receptor PDBQT (plain ATOM records, no
     ROOT/TORSDOF — that wrapper is for flexible ligands, not receptors).
 
-    Placeholder charges/atom-types, same caveat as the ligand side: real
-    workflows should use a proper preparer (e.g. MGLTools/ADFRsuite) for
-    correct partial charges. This is enough for real docking engines
-    (Vina/GNINA) to parse and score a real protein receptor.
+    Placeholder partial charges (real ones need a proper preparer like
+    MGLTools/ADFRsuite), but atom TYPING is real standard-amino-acid
+    chemistry (see _autodock_atom_type) — not just the raw element.
     """
     lines = []
     for a in atoms:
-        # AutoDock atom types are case-sensitive (e.g. "Zn", not "ZN");
-        # PDB files conventionally store element symbols all-uppercase.
-        atom_type = a.element.capitalize()
+        atom_type = _autodock_atom_type(a)
         lines.append(
             f"ATOM  {a.serial:>5d} {a.atom_name:<4s}{a.residue_name:>4s} "
             f"{a.chain_id:1s}{a.residue_number:>4d}    "

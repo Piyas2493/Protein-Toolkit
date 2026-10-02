@@ -36,6 +36,45 @@ from tests.test_docking import make_test_pdb
 # Section 28 keys
 # ----------------------------------------------------------------------
 
+def test_box_for_docking_expands_tight_pocket():
+    from pipeline import _box_for_docking
+    from docking import BindingBox
+    from ligand import load_ligand, LigandPreparator
+
+    # A long, drug-sized molecule (~14 Angstrom) against a tight,
+    # compatibility-scoring-sized pocket box (8 Angstrom) — must expand
+    # to fit the ligand plus padding, not leave it clipped.
+    lig = load_ligand(smiles="CC(C)CN(C)Cc1cc(C(=O)c2csc(S(N)(=O)=O)c2)ccc1O")
+    prep = LigandPreparator(seed=42).prepare(lig)
+    tight = BindingBox(center_x=0, center_y=0, center_z=0,
+                        size_x=8.0, size_y=8.0, size_z=8.0)
+
+    box = _box_for_docking(tight, prep.ligand)
+
+    assert box.size_x > 14.0
+    assert box.size_y > 14.0
+    assert box.size_z > 14.0
+    # Center must be preserved — only size changes.
+    assert (box.center_x, box.center_y, box.center_z) == (0, 0, 0)
+
+
+def test_box_for_docking_keeps_already_adequate_pocket():
+    from pipeline import _box_for_docking
+    from docking import BindingBox
+    from ligand import load_ligand, LigandPreparator
+
+    lig = load_ligand(smiles="CCO")
+    prep = LigandPreparator(seed=42).prepare(lig)
+    roomy = BindingBox(center_x=1, center_y=2, center_z=3,
+                        size_x=20.0, size_y=20.0, size_z=20.0)
+
+    box = _box_for_docking(roomy, prep.ligand)
+
+    assert box.size_x == 20.0
+    assert box.size_y == 20.0
+    assert box.size_z == 20.0
+
+
 REQUIRED_KEYS = {
     "target", "ligand", "best_pocket", "docking",
     "interactions", "active_site_overlap", "evidence",
