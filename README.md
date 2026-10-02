@@ -119,11 +119,21 @@ Read this before citing any number from this tool in a paper.
   residue *instances* are actually close together in 3D space — meaningfully
   stronger evidence, but still a centroid-distance proxy, not a validated
   geometric/orientation model like GASS.
-- **Docking uses placeholder ligand/receptor PDBQT charges.** Real partial
-  charges and rotatable-bond trees are not computed (see the docstrings in
-  `docking/engines/vina_adapter.py` and `docking/preparation.py`). Vina
-  scores from this pipeline are real engine output on real structures, but
-  are not chemically calibrated — don't quote them as binding affinities.
+- **Ligand-side PDBQT is properly prepared (meeko); receptor-side is not.**
+  Ligands get real rotatable-bond torsion trees and Gasteiger-like partial
+  charges via `meeko` (falls back to a rigid single-conformer placeholder
+  only if meeko/RDKit aren't installed). The receptor side still only
+  types atoms by raw element (`docking/preparation.py`'s
+  `write_receptor_pdbqt`) — no aromatic-vs-aliphatic carbon distinction, no
+  H-bond donor/acceptor variants, no receptor hydrogens. Verified live
+  against real ChEMBL inhibitors docked into 1CA2 (human carbonic
+  anhydrase II): the pocket/box correctly centers on the catalytic zinc,
+  but scores come out uniformly positive (should be negative for known
+  sub-50nM inhibitors) — a direct symptom of the missing receptor atom
+  typing, not a ligand-prep problem. Vina scores from this pipeline are
+  real engine output on real structures, but are not chemically
+  calibrated — don't quote them as binding affinities, and don't trust
+  their sign/magnitude until receptor-side typing is fixed too.
 - **The EC classifier's accuracy number depends on how you split the data.**
   Training data is deduplicated by exact sequence before splitting (near-
   duplicate, non-exact matches are not currently filtered — full identity-

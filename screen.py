@@ -81,12 +81,15 @@ def screen_one(candidate: Candidate, prep, pockets, *, docking_engine,
         return row
 
     row["pocket_id"] = compat.best_pocket_id or ""
-    if pose_report and pose_report.ranked:
+    if not compat.best_pocket_id:
+        row["error"] = "no compatible pocket"
+    elif pose_report and pose_report.ranked:
         best = pose_report.ranked[0]
         row["best_score"] = best.score
         row["overall"] = best.overall
-    elif not compat.best_pocket_id:
-        row["error"] = "no compatible pocket"
+    else:
+        warnings = ", ".join(result.warnings) if result else ""
+        row["error"] = f"docking produced no poses ({warnings})"
 
     return row
 

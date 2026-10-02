@@ -176,12 +176,15 @@ def write_receptor_pdbqt(atoms: List[Atom], out_path: str) -> str:
     """
     lines = []
     for a in atoms:
+        # AutoDock atom types are case-sensitive (e.g. "Zn", not "ZN");
+        # PDB files conventionally store element symbols all-uppercase.
+        atom_type = a.element.capitalize()
         lines.append(
             f"ATOM  {a.serial:>5d} {a.atom_name:<4s}{a.residue_name:>4s} "
             f"{a.chain_id:1s}{a.residue_number:>4d}    "
             f"{a.x:>8.3f}{a.y:>8.3f}{a.z:>8.3f}"
             f"{a.occupancy:>6.2f}{a.b_factor:>6.2f}    "
-            f"{0.0:>6.3f} {a.element:<2s}"
+            f"{0.0:>6.3f} {atom_type:<2s}"
         )
     lines.append("END")
     Path(out_path).write_text("\n".join(lines) + "\n", encoding="utf-8")

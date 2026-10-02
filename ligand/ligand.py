@@ -650,6 +650,20 @@ def load_ligand(
             mol = Chem.MolFromSmiles(body)
             if mol is None or mol.GetNumAtoms() == 0:
                 raise LigandLoadError(f"RDKit could not parse SMILES: {body!r}")
+            # Multi-fragment input (e.g. an HCl/Na salt, common in
+            # database SMILES) — keep only the largest fragment. A
+            # disconnected counterion has no bond tying its 3D position
+            # to the real molecule once embedded, which silently breaks
+            # downstream docking geometry.
+            frags = Chem.GetMolFrags(mol, asMols=True, sanitizeFrags=False)
+            if len(frags) > 1:
+                mol = max(frags, key=lambda m: m.GetNumAtoms())
+                # Keep `smiles` consistent with the stripped structure —
+                # preparation steps re-parse `lig.smiles` from scratch
+                # for 3D embedding, so this must reflect the same
+                # fragment as `atoms`/`bonds` below, not the original
+                # multi-fragment input.
+                body = Chem.MolToSmiles(mol)
             atoms, bonds = _rdkit_to_records(mol)
             used_rdkit = True
         except ImportError:

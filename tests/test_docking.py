@@ -257,6 +257,17 @@ def test_docking_manager_unavailable_engine(pockets, prep_ligand):
         )
 
 
+def test_ligand_pdbqt_uses_meeko_torsion_tree():
+    # A flexible molecule (several rotatable bonds) must come out with
+    # a real BRANCH/ENDBRANCH torsion tree, not a single rigid ROOT —
+    # that's the whole point of preferring meeko over the placeholder.
+    from docking.engines.vina_adapter import _ligand_to_pdbqt
+    lig = load_ligand(smiles="CCCCCCNc1ccccc1")
+    pdbqt = _ligand_to_pdbqt(lig)
+    assert "BRANCH" in pdbqt
+    assert "ENDBRANCH" in pdbqt
+
+
 def test_vina_cli_real_dock(tmp_path):
     """Real end-to-end AutoDock Vina CLI docking, skipped if no vina
     binary is available (e.g. CI without bin/vina.exe)."""
