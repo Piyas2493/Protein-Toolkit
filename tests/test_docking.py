@@ -257,6 +257,24 @@ def test_docking_manager_unavailable_engine(pockets, prep_ligand):
         )
 
 
+def test_receptor_atom_typing_acceptors_and_aromaticity():
+    from docking.preparation import _autodock_atom_type
+    from structure.models import Atom
+
+    def atom(name, resname, element):
+        return Atom(serial=1, atom_name=name, residue_name=resname,
+                    chain_id="A", residue_number=1, x=0, y=0, z=0,
+                    occupancy=1.0, b_factor=0.0, element=element)
+
+    assert _autodock_atom_type(atom("CZ", "PHE", "C")) == "A"
+    assert _autodock_atom_type(atom("CB", "ALA", "C")) == "C"
+    assert _autodock_atom_type(atom("O", "ALA", "O")) == "OA"
+    assert _autodock_atom_type(atom("ND1", "HIS", "N")) == "NA"
+    assert _autodock_atom_type(atom("N", "ALA", "N")) == "N"
+    assert _autodock_atom_type(atom("SG", "CYS", "S")) == "SA"
+    assert _autodock_atom_type(atom("ZN", "ZN", "ZN")) == "Zn"
+
+
 def test_ligand_pdbqt_uses_meeko_torsion_tree():
     # A flexible molecule (several rotatable bonds) must come out with
     # a real BRANCH/ENDBRANCH torsion tree, not a single rigid ROOT —

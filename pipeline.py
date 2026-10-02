@@ -33,6 +33,7 @@ from ligand import (
 from docking import (
     ReceptorPreparation,
     PocketDetector,
+    BindingBox,
     CompatibilityEngine,
     DockingManager,
     DockingRequest,
@@ -78,6 +79,29 @@ class FinalReport:
 # Top-level pipeline
 # ----------------------------------------------------------------------
 
+def _box_for_docking(pocket_box, ligand, padding: float = 8.0) -> BindingBox:
+    """Vina needs room to translate/rotate the ligand, not just enough
+    to contain it in its current embedded orientation. Pocket boxes are
+    sized for compatibility *scoring* ("does this fit snugly") and can
+    be as small as 8 Angstrom on a side — far too tight for a 14+
+    Angstrom drug-sized molecule, which then can only dock in clashing,
+    unfavorable (near-zero or positive-scoring) poses. Expand to fit
+    the ligand's longest dimension plus padding in every axis, keeping
+    the pocket's own center.
+    """
+    bbox = ligand.bounding_box()
+    extent = max(bbox[3] - bbox[0], bbox[4] - bbox[1], bbox[5] - bbox[2])
+    needed = extent + padding
+    return BindingBox(
+        center_x=pocket_box.center_x,
+        center_y=pocket_box.center_y,
+        center_z=pocket_box.center_z,
+        size_x=max(pocket_box.size_x, needed),
+        size_y=max(pocket_box.size_y, needed),
+        size_z=max(pocket_box.size_z, needed),
+    )
+
+
 def dock_ligand_against_receptor(
     ligand,
     prep,
@@ -113,11 +137,12 @@ def dock_ligand_against_receptor(
     receptor_pdbqt = tempfile.mktemp(suffix="_receptor.pdbqt")
     write_receptor_pdbqt(prep.receptor_atoms, receptor_pdbqt)
 
+    docking_box = _box_for_docking(best_pocket.box, ligand)
     result = DockingManager(engine=docking_engine).dock(
         DockingRequest(
             receptor_path=receptor_pdbqt,
             ligand=ligand,
-            box=best_pocket.box,
+            box=docking_box,
             n_poses=n_poses,
             seed=seed,
         )

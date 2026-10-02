@@ -119,21 +119,27 @@ Read this before citing any number from this tool in a paper.
   residue *instances* are actually close together in 3D space — meaningfully
   stronger evidence, but still a centroid-distance proxy, not a validated
   geometric/orientation model like GASS.
-- **Ligand-side PDBQT is properly prepared (meeko); receptor-side is not.**
-  Ligands get real rotatable-bond torsion trees and Gasteiger-like partial
-  charges via `meeko` (falls back to a rigid single-conformer placeholder
-  only if meeko/RDKit aren't installed). The receptor side still only
-  types atoms by raw element (`docking/preparation.py`'s
-  `write_receptor_pdbqt`) — no aromatic-vs-aliphatic carbon distinction, no
-  H-bond donor/acceptor variants, no receptor hydrogens. Verified live
-  against real ChEMBL inhibitors docked into 1CA2 (human carbonic
-  anhydrase II): the pocket/box correctly centers on the catalytic zinc,
-  but scores come out uniformly positive (should be negative for known
-  sub-50nM inhibitors) — a direct symptom of the missing receptor atom
-  typing, not a ligand-prep problem. Vina scores from this pipeline are
-  real engine output on real structures, but are not chemically
-  calibrated — don't quote them as binding affinities, and don't trust
-  their sign/magnitude until receptor-side typing is fixed too.
+- **Docking charges are still placeholder; typing and box sizing are now
+  real.** Ligands get real rotatable-bond torsion trees and Gasteiger-like
+  partial charges via `meeko` (falls back to a rigid single-conformer
+  placeholder only if meeko/RDKit aren't installed). The receptor gets
+  real AutoDock atom typing from standard amino-acid chemistry
+  (`docking/preparation.py`'s `_autodock_atom_type`: aromatic-ring carbons,
+  H-bond-accepting O/N/S) — not just the raw element, though it still has
+  no explicit hydrogens and the partial charges themselves remain 0.0.
+  Docking boxes are expanded to fit the ligand's longest dimension plus
+  padding (`pipeline._box_for_docking`) — pocket boxes from compatibility
+  *scoring* can be as small as 8 Angstrom on a side, nowhere near enough
+  for a 14+ Angstrom drug-sized molecule to dock in anything but a forced,
+  clashing pose. Verified live against 20 real ChEMBL inhibitors docked
+  into 1CA2 (human carbonic anhydrase II): before these three fixes, 65%
+  of candidates errored outright and the rest scored nonsensically
+  positive; after, all 20 dock with chemically plausible negative scores
+  (-5.8 to -7.0 kcal/mol). Vina scores from this pipeline are real engine
+  output on real structures, but are still not chemically calibrated —
+  don't quote them as binding affinities, and treat relative ranking as
+  more trustworthy than absolute magnitude until real partial charges
+  (not just correct types) are computed.
 - **The EC classifier's accuracy number depends on how you split the data.**
   Training data is deduplicated by exact sequence before splitting (near-
   duplicate, non-exact matches are not currently filtered — full identity-
