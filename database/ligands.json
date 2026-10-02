@@ -1,0 +1,37 @@
+[
+    {
+        "name":"ATP",
+        "family":"Nucleotide",
+        "enzyme_classes":["Transferase","Ligase"],
+        "motifs":["Walker A ATP-binding"],
+        "functions":["ATP-dependent Protein Kinase"],
+        "confidence":95
+    },
+
+    {
+        "name":"Zn2+",
+        "family":"Metal Ion",
+        "enzyme_classes":["Hydrolase"],
+        "motifs":["HEXXH Metalloprotease"],
+        "functions":["Zinc Metalloprotease"],
+        "confidence":94
+    },
+
+    {
+        "name":"NAD",
+        "family":"Coenzyme",
+        "enzyme_classes":["Oxidoreductase"],
+        "motifs":["Rossmann Fold"],
+        "functions":["Oxidoreductase"],
+        "confidence":93
+    },
+
+    {
+        "name":"Ca2+",
+        "family":"Metal Ion",
+        "enzyme_classes":["Binding Protein"],
+        "motifs":["EF-Hand Calcium"],
+        "functions":["Calcium Binding Protein"],
+        "confidence":90
+    }
+]

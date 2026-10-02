@@ -1,0 +1,49 @@
+[
+    {
+        "name":"ATP-dependent Protein Kinase",
+        "enzyme_class":"Transferase",
+        "motifs":[
+            "Walker A ATP-binding"
+        ],
+        "ligands":[
+            "ATP"
+        ],
+        "description":"Transfers phosphate groups to substrates."
+    },
+
+    {
+        "name":"Zinc Metalloprotease",
+        "enzyme_class":"Hydrolase",
+        "motifs":[
+            "HEXXH Metalloprotease"
+        ],
+        "ligands":[
+            "Zn2+"
+        ],
+        "description":"Hydrolyzes peptide bonds using catalytic zinc."
+    },
+
+    {
+        "name":"Oxidoreductase",
+        "enzyme_class":"Oxidoreductase",
+        "motifs":[
+            "Rossmann Fold"
+        ],
+        "ligands":[
+            "NAD/FAD"
+        ],
+        "description":"Catalyzes oxidation-reduction reactions."
+    },
+
+    {
+        "name":"Calcium Binding Protein",
+        "enzyme_class":"Binding Protein",
+        "motifs":[
+            "EF-Hand Calcium"
+        ],
+        "ligands":[
+            "Ca2+"
+        ],
+        "description":"Calcium-dependent signalling protein."
+    }
+]

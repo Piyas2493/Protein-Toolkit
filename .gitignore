@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor
+.vscode/
+.idea/
+
+# Local tooling state
+.claude/
+
+# ML training artifacts (downloaded/regenerated, not source)
+ml/training/*.csv
+ml/training/*.parquet
+ml/training/*.json
+ml/models/*.pkl
+ml/models/*.pkl.bak
+
+# Generated reports / downloaded structures (not source)
+outputs/*.json
+outputs/*.csv
+outputs/*.txt
+outputs/*.html
+outputs/*.png
+
+# Downloaded external tool binaries (not source; see bin/README.md for
+# where to fetch them)
+bin/*
+!bin/README.md
+
+# Downloaded PDB structures (cached from RCSB, not source)
+outputs/pdb_cache/

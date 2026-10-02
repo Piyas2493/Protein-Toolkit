@@ -1,0 +1,29 @@
+[
+    {
+        "motif":"HEXXH Metalloprotease",
+        "radius":12,
+        "site":"Metalloprotease catalytic pocket",
+        "confidence":95
+    },
+
+    {
+        "motif":"Walker A ATP-binding",
+        "radius":18,
+        "site":"ATP Binding Pocket",
+        "confidence":94
+    },
+
+    {
+        "motif":"Rossmann Fold",
+        "radius":20,
+        "site":"NAD/FAD Binding Pocket",
+        "confidence":90
+    },
+
+    {
+        "motif":"EF-Hand Calcium",
+        "radius":14,
+        "site":"Calcium Binding Pocket",
+        "confidence":89
+    }
+]

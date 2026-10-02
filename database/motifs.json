@@ -1,0 +1,46 @@
+[
+    {
+        "name":"HEXXH Metalloprotease",
+        "regex":"HE..H",
+        "family":"Metalloprotease",
+        "ligand":"Zn2+",
+        "confidence":0.95,
+        "description":"Catalytic zinc-binding motif."
+    },
+
+    {
+        "name":"Walker A ATP-binding",
+        "regex":"[AG].{4}GK[ST]",
+        "family":"ATPase",
+        "ligand":"ATP",
+        "confidence":0.92,
+        "description":"ATP phosphate-binding loop."
+    },
+
+    {
+        "name":"Rossmann Fold",
+        "regex":"[VIL]TG[AT]GG[GST]",
+        "family":"Oxidoreductase",
+        "ligand":"NAD/FAD",
+        "confidence":0.90,
+        "description":"Dinucleotide-binding fold."
+    },
+
+    {
+        "name":"C2H2 Zinc Finger",
+        "regex":"C.{2,4}C.{12,14}H.{3,5}H",
+        "family":"DNA Binding",
+        "ligand":"Zn2+",
+        "confidence":0.88,
+        "description":"Classical zinc finger."
+    },
+
+    {
+        "name":"EF-Hand Calcium",
+        "regex":"D.{2}D.{7}E",
+        "family":"Calcium Binding",
+        "ligand":"Ca2+",
+        "confidence":0.87,
+        "description":"EF-hand calcium-binding loop."
+    }
+]
