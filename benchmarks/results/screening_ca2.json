@@ -1,0 +1,46 @@
+{
+  "target": "ca2",
+  "pdb": "1CA2",
+  "chain": "A",
+  "seed": 42,
+  "n_docked": 98,
+  "n_failed": 2,
+  "n_active": 49,
+  "n_weak": 49,
+  "roc_auc": 0.5837151187005414,
+  "roc_auc_95ci": [
+    0.4747813411078717,
+    0.6926384839650145
+  ],
+  "size_only_auc": 0.5006247396917951,
+  "ef_top10pct": 1.1111111111111112,
+  "spearman_score_vs_pchembl_actives": -0.06268976653978847,
+  "pose_labels": {
+    "active/MODERATE": 28,
+    "active/STRONG": 16,
+    "active/WEAK": 5,
+    "weak/MODERATE": 17,
+    "weak/STRONG": 26,
+    "weak/WEAK": 6
+  },
+  "pockets": {
+    "P1": 98
+  },
+  "failures": [
+    [
+      "CHEMBL4470319",
+      "docking failed: ValueError: meeko could not write PDBQT: atom number 9 has None type, mol name: None\natom number 9 has None type, mol name: None\n"
+    ],
+    [
+      "CHEMBL4082845",
+      "docking failed: ValueError: meeko could not write PDBQT: atom number 15 has None type, mol name: None\natom number 16 has None type, mol name: None\natom number 15 has None type, mol name: None\natom number 16 has None type, mol name: None\n"
+    ]
+  ],
+  "primary_sulfonamide_fraction": {
+    "active": 0.8571428571428571,
+    "weak": 0.061224489795918366
+  },
+  "sulfonamide_substructure_auc": 0.8979591836734695,
+  "vina_auc_within_sulfonamides": 0.5158730158730159,
+  "n_sulfonamides": 45
+}

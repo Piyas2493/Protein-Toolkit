@@ -1,0 +1,29 @@
+{
+  "target": "esr1",
+  "pdb": "3ERT",
+  "chain": "A",
+  "seed": 42,
+  "n_docked": 100,
+  "n_failed": 0,
+  "n_active": 50,
+  "n_weak": 50,
+  "roc_auc": 0.5796,
+  "roc_auc_95ci": [
+    0.46318,
+    0.68482
+  ],
+  "size_only_auc": 0.49760000000000004,
+  "ef_top10pct": 1.4,
+  "spearman_score_vs_pchembl_actives": 0.01719748379882355,
+  "pose_labels": {
+    "active/MODERATE": 18,
+    "active/STRONG": 32,
+    "weak/MODERATE": 22,
+    "weak/STRONG": 23,
+    "weak/WEAK": 5
+  },
+  "pockets": {
+    "P1": 100
+  },
+  "failures": []
+}

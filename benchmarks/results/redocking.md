@@ -13,7 +13,9 @@ Success = heavy-atom RMSD <= 2.0 A to the crystal pose. Seeds: 42, 1, 2. Vina ex
 
 **Top-1 success: 9/12 runs** (75%); best-of-N success: 11/12.
 
-## Pipeline mode (toolkit's own pocket detection)
+## Pipeline mode (pocket from HETATM records)
+
+The pocket is built from the structure's HETATM records, which include the crystal ligand itself: a small center-to-ligand distance here is by construction, not site finding.
 
 | PDB | Pocket found | Pocket center to ligand (A) | Top-1 RMSD (A) | Best-of-N RMSD (A) | Pose label |
 |---|---|---|---|---|---|
@@ -21,3 +23,14 @@ Success = heavy-atom RMSD <= 2.0 A to the crystal pose. Seeds: 42, 1, 2. Vina ex
 | 3PTB | P2 | 0.2 | 0.35 | 0.35 | MODERATE |
 | 1STP | P1 | 1.0 | 0.83 | 0.83 | STRONG |
 | 181L | P1 | 13.2 | 12.30 | 12.27 | WEAK |
+
+## Blind mode (all HETATM removed; cavity detection)
+
+The detector sees protein atoms only, so this is the honest test of whether the site is found.
+
+| PDB | Pocket found | Pocket center to ligand (A) | Top-1 RMSD (A) | Best-of-N RMSD (A) | Pose label |
+|---|---|---|---|---|---|
+| 3HS4 | P15 | 6.3 | 3.38 | 3.38 | WEAK |
+| 3PTB | P5 | 8.9 | 2.81 | 2.81 | WEAK |
+| 1STP | P1 | 9.1 | 5.99 | 5.88 | MODERATE |
+| 181L | P1 | 11.3 | 17.26 | 13.89 | WEAK |

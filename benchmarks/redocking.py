@@ -7,8 +7,12 @@ Two modes per complex:
   native    box centered on the crystal ligand — isolates the docking
             engine + ligand/receptor preparation from pocket finding.
   pipeline  the toolkit's own PocketDetector/CompatibilityEngine choose
-            the pocket — tests the whole tool, including whether it
-            finds the right pocket at all.
+            the pocket. PocketDetector builds pockets from the structure's
+            HETATM records, including the very ligand being redocked, so
+            this checks the bookkeeping, NOT whether the site can be found.
+  blind     same, but with every HETATM removed first, so the detector
+            must find the site from protein geometry alone (cavity
+            detection). The honest test of site finding.
 
 The docking-input SMILES is derived from the crystal ligand itself
 (bond orders from a connectivity template, stereochemistry from the 3D
@@ -162,11 +166,17 @@ def benchmark(seeds, n_poses, exhaustiveness):
         native = [run_native(prep, ref, smiles, s, n_poses, exhaustiveness)
                   for s in seeds]
         pipe = run_pipeline(prep, pockets, ref, smiles, seeds[0], n_poses)
+
+        blind_prep = ReceptorPreparation().prepare(pdb_path, chain=chain)
+        blind_prep.structure.ligands = []      # no HETATM anchors -> cavities
+        blind = run_pipeline(
+            blind_prep, PocketDetector(cutoff=5.0).detect(blind_prep),
+            ref, smiles, seeds[0], n_poses)
         rows.append({
             "pdb": pdb_id, "ligand": resname, "smiles": smiles,
             "heavy_atoms": ref.GetNumAtoms(),
             "rotatable_bonds": Chem.rdMolDescriptors.CalcNumRotatableBonds(ref),
-            "native": native, "pipeline": pipe,
+            "native": native, "pipeline": pipe, "blind": blind,
         })
     return rows
 
@@ -202,18 +212,27 @@ def to_markdown(rows, summary, seeds):
             f"{summary['native_runs']} runs** "
             f"({summary['native_top1_rate']:.0%}); best-of-N success: "
             f"{summary['native_best_of_n_success']}/{summary['native_runs']}.",
-            "", "## Pipeline mode (toolkit's own pocket detection)", "",
-            "| PDB | Pocket found | Pocket center to ligand (A) | "
-            "Top-1 RMSD (A) | Best-of-N RMSD (A) | Pose label |",
-            "|---|---|---|---|---|---|"]
-    for r in rows:
-        p = r["pipeline"]
-        if not p["pocket_found"]:
-            out.append(f"| {r['pdb']} | no | - | - | - | - |")
-            continue
-        out.append(f"| {r['pdb']} | {p['pocket_id']} | {p['pocket_dist']:.1f} | "
-                   f"{p['top1_rmsd']:.2f} | {p['best_rmsd']:.2f} | "
-                   f"{p['label']} |")
+            ]
+    for key, title, note in (
+        ("pipeline", "Pipeline mode (pocket from HETATM records)",
+         "The pocket is built from the structure's HETATM records, which "
+         "include the crystal ligand itself: a small center-to-ligand "
+         "distance here is by construction, not site finding."),
+        ("blind", "Blind mode (all HETATM removed; cavity detection)",
+         "The detector sees protein atoms only, so this is the honest test "
+         "of whether the site is found.")):
+        out += ["", f"## {title}", "", note, "",
+                "| PDB | Pocket found | Pocket center to ligand (A) | "
+                "Top-1 RMSD (A) | Best-of-N RMSD (A) | Pose label |",
+                "|---|---|---|---|---|---|"]
+        for r in rows:
+            p = r[key]
+            if not p["pocket_found"]:
+                out.append(f"| {r['pdb']} | no | - | - | - | - |")
+                continue
+            out.append(f"| {r['pdb']} | {p['pocket_id']} | {p['pocket_dist']:.1f} | "
+                       f"{p['top1_rmsd']:.2f} | {p['best_rmsd']:.2f} | "
+                       f"{p['label']} |")
     return "\n".join(out) + "\n"
 
 
