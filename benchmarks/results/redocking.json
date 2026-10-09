@@ -61,6 +61,14 @@
         "top1_rmsd": 5.263690272326764,
         "best_rmsd": 2.4355286371507674,
         "label": "MODERATE"
+      },
+      "blind": {
+        "pocket_found": true,
+        "pocket_id": "P15",
+        "pocket_dist": 6.272030990481643,
+        "top1_rmsd": 3.3803596777495533,
+        "best_rmsd": 3.3803596777495533,
+        "label": "WEAK"
       }
     },
     {
@@ -111,6 +119,14 @@
         "top1_rmsd": 0.3458753179616449,
         "best_rmsd": 0.3458753179616449,
         "label": "MODERATE"
+      },
+      "blind": {
+        "pocket_found": true,
+        "pocket_id": "P5",
+        "pocket_dist": 8.923442170644659,
+        "top1_rmsd": 2.8104976437268423,
+        "best_rmsd": 2.8104976437268423,
+        "label": "WEAK"
       }
     },
     {
@@ -161,6 +177,14 @@
         "top1_rmsd": 0.8339690456216459,
         "best_rmsd": 0.8339690456216459,
         "label": "STRONG"
+      },
+      "blind": {
+        "pocket_found": true,
+        "pocket_id": "P1",
+        "pocket_dist": 9.078472720693107,
+        "top1_rmsd": 5.986293104558978,
+        "best_rmsd": 5.882918841267008,
+        "label": "MODERATE"
       }
     },
     {
@@ -210,6 +234,14 @@
         "pocket_dist": 13.16474562884609,
         "top1_rmsd": 12.301296603540727,
         "best_rmsd": 12.273643418465245,
+        "label": "WEAK"
+      },
+      "blind": {
+        "pocket_found": true,
+        "pocket_id": "P1",
+        "pocket_dist": 11.312657265586331,
+        "top1_rmsd": 17.264024619482704,
+        "best_rmsd": 13.893622860730616,
         "label": "WEAK"
       }
     }

@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "ProteinToolkit"
+abstract: >-
+  Integrated protein analysis pipeline: sequence statistics, motif and
+  catalytic-residue detection, EC-class prediction, structural pocket
+  analysis, and AutoDock Vina docking with ligand screening, fused into one
+  confidence-scored report.
+type: software
+repository-code: "https://github.com/Piyas2493/Protein-Toolkit"
+# TODO(author): replace with real name(s), affiliation and ORCID before release.
+authors:
+  - family-names: "TODO"
+    given-names: "Piyas"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+    # affiliation: "TODO"
+# TODO(author): add `license:` (SPDX id) once LICENSE is chosen, plus
+# `version:` and `date-released:` when you tag a release.
+keywords:
+  - bioinformatics
+  - enzyme classification
+  - molecular docking
+  - virtual screening
+  - AutoDock Vina
