@@ -95,15 +95,23 @@ def screen_one(candidate: Candidate, prep, pockets, *, docking_engine,
 
 
 def run_screen(pdb_path: str, library_path: str, *, chain="A",
-               docking_engine="mock", n_poses=5, seed=42):
+               docking_engine="mock", n_poses=5, seed=42,
+               receptor_info: Optional[dict] = None):
+    """Screen the library; if `receptor_info` is a dict it is filled with
+    how the receptor was prepared (route, pH, hydrogens), for provenance."""
     if not Path(pdb_path).exists() and looks_like_pdb_id(pdb_path):
         print(f"Fetching {pdb_path.upper()} from RCSB...", file=sys.stderr)
         pdb_path = str(fetch_pdb(pdb_path))
 
     prep = ReceptorPreparation().prepare(pdb_path, chain=chain)
     pockets = PocketDetector(cutoff=5.0).detect(prep)
+    if docking_engine != "mock":
+        prep.pdbqt()        # protonate + charge once, before the ligand loop
+    if receptor_info is not None:
+        receptor_info.update(prep.pdbqt_info)
     print(f"Receptor ready: {len(prep.receptor_atoms)} atoms, "
-          f"{len(pockets)} pocket(s)", file=sys.stderr)
+          f"{len(pockets)} pocket(s), prep {prep.pdbqt_info or 'n/a'}",
+          file=sys.stderr)
 
     candidates = load_library(library_path)
     rows = [

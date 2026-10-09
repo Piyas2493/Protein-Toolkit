@@ -29,7 +29,6 @@ import json
 import math
 import statistics
 import sys
-import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -41,7 +40,7 @@ from rdkit.Chem import AllChem, rdMolAlign
 
 from docking import (
     BindingBox, DockingManager, DockingRequest, PocketDetector,
-    ReceptorPreparation, write_receptor_pdbqt,
+    ReceptorPreparation,
 )
 from ligand import LigandPreparator, load_ligand
 from pipeline import _box_for_docking, dock_ligand_against_receptor
@@ -116,10 +115,8 @@ def run_native(prep, ref_mol, smiles, seed, n_poses=9, exhaustiveness=8):
     box = BindingBox(c[0], c[1], c[2], 8.0, 8.0, 8.0)
     lig = LigandPreparator(seed=seed).prepare(load_ligand(smiles=smiles)).ligand
     docking_box = _box_for_docking(box, lig)
-    receptor = tempfile.mktemp(suffix="_receptor.pdbqt")
-    write_receptor_pdbqt(prep.receptor_atoms, receptor)
     result = DockingManager(engine="vina").dock(DockingRequest(
-        receptor_path=receptor, ligand=lig, box=docking_box,
+        receptor_path=prep.pdbqt(), ligand=lig, box=docking_box,
         n_poses=n_poses, exhaustiveness=exhaustiveness, seed=seed))
     rmsds = pose_rmsds(result.poses[0].provenance["pdbqt"], ref_mol)
     return {
@@ -174,6 +171,7 @@ def benchmark(seeds, n_poses, exhaustiveness):
             ref, smiles, seeds[0], n_poses)
         rows.append({
             "pdb": pdb_id, "ligand": resname, "smiles": smiles,
+            "receptor_prep": prep.pdbqt_info,
             "heavy_atoms": ref.GetNumAtoms(),
             "rotatable_bonds": Chem.rdMolDescriptors.CalcNumRotatableBonds(ref),
             "native": native, "pipeline": pipe, "blind": blind,
@@ -198,6 +196,12 @@ def to_markdown(rows, summary, seeds):
            f"Success = heavy-atom RMSD <= {SUCCESS_RMSD} A to the crystal "
            f"pose. Seeds: {', '.join(map(str, seeds))}. Vina exhaustiveness "
            "and pose count as in the run's JSON.", "",
+           "Receptor preparation: " + "; ".join(
+               f"{r['pdb']} {r['receptor_prep'].get('route')}"
+               + (f" pH {r['receptor_prep']['ph']:g}, "
+                  f"{r['receptor_prep']['n_hd']} polar H"
+                  if r['receptor_prep'].get('ph') else "")
+               for r in rows) + ".", "",
            "## Native-box mode (box centered on the crystal ligand)", "",
            "| PDB | Ligand | Heavy atoms | Rot. bonds | Top-1 RMSD (A) "
            "per seed | Best-of-N RMSD (A) per seed | Top-1 Vina score |",

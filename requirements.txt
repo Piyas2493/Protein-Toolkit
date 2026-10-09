@@ -9,3 +9,5 @@ pytest>=7.4.0
 rdkit>=2024.3.1
 meeko>=0.8.0
 gemmi>=0.7.0
+pdb2pqr>=3.7.0
+propka>=3.5.1

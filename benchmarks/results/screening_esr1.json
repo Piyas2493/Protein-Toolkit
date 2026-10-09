@@ -3,24 +3,35 @@
   "pdb": "3ERT",
   "chain": "A",
   "seed": 42,
+  "receptor_prep": {
+    "route": "pdb2pqr+meeko",
+    "ph": 7.4,
+    "n_atoms": 2379,
+    "n_hd": 413,
+    "net_charge": -6.0,
+    "hd_near_metal": 0,
+    "residues_left_out": [
+      "A:552 PRO"
+    ]
+  },
   "n_docked": 100,
   "n_failed": 0,
   "n_active": 50,
   "n_weak": 50,
-  "roc_auc": 0.5796,
+  "roc_auc": 0.602,
   "roc_auc_95ci": [
-    0.46318,
-    0.68482
+    0.4852,
+    0.7032499999999997
   ],
   "size_only_auc": 0.49760000000000004,
-  "ef_top10pct": 1.4,
-  "spearman_score_vs_pchembl_actives": 0.01719748379882355,
+  "ef_top10pct": 1.6,
+  "spearman_score_vs_pchembl_actives": 0.04390537092913816,
   "pose_labels": {
-    "active/MODERATE": 18,
-    "active/STRONG": 32,
-    "weak/MODERATE": 22,
-    "weak/STRONG": 23,
-    "weak/WEAK": 5
+    "active/MODERATE": 16,
+    "active/STRONG": 34,
+    "weak/MODERATE": 18,
+    "weak/STRONG": 29,
+    "weak/WEAK": 3
   },
   "pockets": {
     "P1": 100

@@ -152,8 +152,9 @@ def run(set_path, out_dir, target, seed=42, n_poses=5):
                                      encoding="utf-8") as lib:
         for m, r in meta.items():
             lib.write(f"{r['smiles']} {m}\n")
+    receptor_info = {}
     rows = run_screen(pdb, lib.name, chain=chain, docking_engine="vina",
-                      n_poses=n_poses, seed=seed)
+                      n_poses=n_poses, seed=seed, receptor_info=receptor_info)
 
     ok = [r for r in rows if r["best_score"] != ""]
     y = [int(meta[r["name"]]["label"] == "active") for r in ok]
@@ -171,6 +172,7 @@ def run(set_path, out_dir, target, seed=42, n_poses=5):
 
     summary = {
         "target": target, "pdb": pdb, "chain": chain, "seed": seed,
+        "receptor_prep": receptor_info,
         "n_docked": len(ok), "n_failed": len(rows) - len(ok),
         "n_active": sum(y), "n_weak": len(y) - sum(y),
         "roc_auc": auc, "roc_auc_95ci": [lo, hi],
@@ -217,6 +219,15 @@ def run(set_path, out_dir, target, seed=42, n_poses=5):
     return summary
 
 
+def prep_note(info):
+    """One-line receptor-preparation description for the result files."""
+    if info.get("route") == "pdb2pqr+meeko":
+        return (f"pdb2pqr/PROPKA + meeko at pH {info['ph']:g} "
+                f"({info['n_hd']} polar H, template Gasteiger charges)")
+    return ("FALLBACK writer (no hydrogens, zero charges)"
+            if info else "unknown")
+
+
 def to_markdown(s):
     controls = ""
     if "sulfonamide_substructure_auc" in s:
@@ -233,6 +244,7 @@ def to_markdown(s):
 
 {s['n_active']} actives (ChEMBL binding assays, pChEMBL >= {ACTIVE_PCHEMBL:g}) vs {s['n_weak']} size-matched
 weak binders (pChEMBL <= {WEAK_PCHEMBL:g}); {s['n_failed']} ligand(s) failed to dock and are excluded.
+Receptor preparation: {prep_note(s['receptor_prep'])}.
 
 | Metric | Value |
 |---|---|

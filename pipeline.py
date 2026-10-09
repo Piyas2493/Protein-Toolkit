@@ -39,7 +39,6 @@ from docking import (
     DockingRequest,
     PoseAnalyzer,
     DockingReportWriter,
-    write_receptor_pdbqt,
 )
 from evidence_fusion import EvidenceFusionEngine, EvidenceItem, FusionReport
 from structure.fetch import fetch_pdb, looks_like_pdb_id
@@ -131,11 +130,11 @@ def dock_ligand_against_receptor(
                        if p.pocket_id == compat.best_pocket_id)
 
     # Real engines (Vina/GNINA) require receptor input in PDBQT, not the
-    # raw PDB — write one from the already-parsed, chain-selected
-    # receptor atoms. Harmless no-op cost for the mock engine.
-    import tempfile
-    receptor_pdbqt = tempfile.mktemp(suffix="_receptor.pdbqt")
-    write_receptor_pdbqt(prep.receptor_atoms, receptor_pdbqt)
+    # raw PDB. prep.pdbqt() protonates (pH 7.4) and charges the receptor
+    # once and caches it, so a screening loop pays that cost once, and
+    # falls back to the unprotonated writer, with a warning, if the
+    # preparer is unavailable. The mock engine never reads the file.
+    receptor_pdbqt = "" if docking_engine == "mock" else prep.pdbqt()
 
     docking_box = _box_for_docking(best_pocket.box, ligand)
     result = DockingManager(engine=docking_engine).dock(
