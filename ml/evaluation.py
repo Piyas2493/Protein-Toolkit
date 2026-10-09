@@ -26,13 +26,12 @@ from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from ml.model_loader import ModelLoader
+from ml.splits import held_out_split
 
 
 def _held_out_split(csv_path: Path):
@@ -40,11 +39,8 @@ def _held_out_split(csv_path: Path):
     df = pd.read_csv(csv_path)
     feature_cols = [c for c in df.columns if c not in ("ID", "Label")]
     X = df[feature_cols].astype(np.float32)
-    y = df["Label"]
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y,
-    )
-    return X_test, y_test
+    _, test_idx, _ = held_out_split(df)
+    return X.iloc[test_idx], df["Label"].iloc[test_idx]
 
 
 def calibration_bins(

@@ -25,13 +25,13 @@ if str(ROOT) not in sys.path:
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import (
-    StratifiedKFold, cross_val_score, train_test_split,
-)
+from sklearn.model_selection import cross_val_score
 from sklearn.metrics import (
     accuracy_score, classification_report, confusion_matrix,
 )
 from sklearn.preprocessing import LabelEncoder
+
+from ml.splits import cv_splitter, held_out_split
 
 
 def _try_xgb():
@@ -80,9 +80,12 @@ def main(argv=None) -> int:
     print(f"  rows={len(df)} features={len(feature_cols)} "
           f"classes={list(le.classes_)}", file=sys.stderr)
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y_enc, test_size=0.2, random_state=42, stratify=y_enc,
-    )
+    train_idx, test_idx, groups = held_out_split(df)
+    X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+    y_train, y_test = y_enc[train_idx], y_enc[test_idx]
+    g_train = groups[train_idx] if groups is not None else None
+    print(f"  split: {'cluster-aware' if groups is not None else 'RANDOM (leaky)'}"
+          f" train={len(train_idx)} test={len(test_idx)}", file=sys.stderr)
 
     XGBClassifier = _try_xgb()
     model = XGBClassifier(
@@ -97,10 +100,10 @@ def main(argv=None) -> int:
         eval_metric="mlogloss",
     )
 
-    print("\n5-fold stratified CV ...", file=sys.stderr)
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    print("\n5-fold CV ...", file=sys.stderr)
     cv_scores = cross_val_score(
-        model, X_train, y_train, cv=cv, scoring="accuracy", n_jobs=-1,
+        model, X_train, y_train, cv=cv_splitter(g_train), groups=g_train,
+        scoring="accuracy", n_jobs=-1,
     )
     print(f"  scores = {cv_scores}", file=sys.stderr)
     print(f"  mean   = {cv_scores.mean():.4f}  std={cv_scores.std():.4f}",
