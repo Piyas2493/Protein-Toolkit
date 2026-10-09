@@ -4,6 +4,8 @@ ProteinToolkit Random Forest Trainer
 
 import pandas as pd
 
+from .splits import cv_splitter, held_out_split
+
 try:
     import joblib
 except ImportError:
@@ -11,11 +13,7 @@ except ImportError:
 
 try:
     from sklearn.ensemble import RandomForestClassifier
-    from sklearn.model_selection import (
-        train_test_split,
-        StratifiedKFold,
-        cross_val_score
-    )
+    from sklearn.model_selection import cross_val_score
     from sklearn.metrics import (
         accuracy_score,
         classification_report,
@@ -24,8 +22,6 @@ try:
 
 except ImportError as exc:
     RandomForestClassifier = None
-    train_test_split = None
-    StratifiedKFold = None
     cross_val_score = None
     accuracy_score = None
     classification_report = None
@@ -65,7 +61,7 @@ class ModelTrainer:
 
     def train(self, csv_file):
 
-        if train_test_split is None or accuracy_score is None:
+        if cross_val_score is None or accuracy_score is None:
             raise ImportError(
                 "scikit-learn is required to train the model. "
                 "Install scikit-learn to use training functionality."
@@ -79,18 +75,10 @@ class ModelTrainer:
 
         y = dataframe["Label"]
 
-        X_train, X_test, y_train, y_test = train_test_split(
-
-            X,
-            y,
-
-            test_size=0.20,
-
-            random_state=42,
-
-            stratify=y
-
-        )
+        train_idx, test_idx, groups = held_out_split(dataframe)
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+        g_train = groups[train_idx] if groups is not None else None
 
         self.model.fit(
             X_train,
@@ -101,17 +89,12 @@ class ModelTrainer:
         # 5-FOLD CROSS-VALIDATION
         # ==============================
 
-        cv = StratifiedKFold(
-            n_splits=5,
-            shuffle=True,
-            random_state=42
-        )
-
         cv_scores = cross_val_score(
             self.model,
             X_train,
             y_train,
-            cv=cv,
+            cv=cv_splitter(g_train),
+            groups=g_train,
             scoring="accuracy",
             n_jobs=-1
         )
