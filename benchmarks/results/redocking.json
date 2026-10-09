@@ -1,0 +1,217 @@
+{
+  "seeds": [
+    42,
+    1,
+    2
+  ],
+  "n_poses": 9,
+  "exhaustiveness": 8,
+  "summary": {
+    "native_runs": 12,
+    "native_top1_success": 9,
+    "native_best_of_n_success": 11,
+    "native_top1_rate": 0.75
+  },
+  "complexes": [
+    {
+      "pdb": "3HS4",
+      "ligand": "AZM",
+      "smiles": "CC(=O)Nc1nnc(S(N)(=O)=O)s1",
+      "heavy_atoms": 13,
+      "rotatable_bonds": 2,
+      "native": [
+        {
+          "top1_rmsd": 3.309839843071606,
+          "best_rmsd": 2.446535982148009,
+          "top1_score": -5.918,
+          "n_poses": 9,
+          "box": [
+            16.9,
+            16.9,
+            16.9
+          ]
+        },
+        {
+          "top1_rmsd": 3.2746379007368627,
+          "best_rmsd": 1.4041543004948638,
+          "top1_score": -5.914,
+          "n_poses": 9,
+          "box": [
+            16.9,
+            16.9,
+            16.9
+          ]
+        },
+        {
+          "top1_rmsd": 3.413182836129093,
+          "best_rmsd": 1.4089286006915775,
+          "top1_score": -5.94,
+          "n_poses": 9,
+          "box": [
+            16.7,
+            16.7,
+            16.7
+          ]
+        }
+      ],
+      "pipeline": {
+        "pocket_found": true,
+        "pocket_id": "P2",
+        "pocket_dist": 0.07782670211521196,
+        "top1_rmsd": 5.263690272326764,
+        "best_rmsd": 2.4355286371507674,
+        "label": "MODERATE"
+      }
+    },
+    {
+      "pdb": "3PTB",
+      "ligand": "BEN",
+      "smiles": "N=C(N)c1ccccc1",
+      "heavy_atoms": 9,
+      "rotatable_bonds": 1,
+      "native": [
+        {
+          "top1_rmsd": 0.3954140056656688,
+          "best_rmsd": 0.37677802662567894,
+          "top1_score": -6.058,
+          "n_poses": 9,
+          "box": [
+            13.0,
+            13.0,
+            13.0
+          ]
+        },
+        {
+          "top1_rmsd": 0.42845911070981985,
+          "best_rmsd": 0.37577233820793193,
+          "top1_score": -6.045,
+          "n_poses": 9,
+          "box": [
+            13.1,
+            13.1,
+            13.1
+          ]
+        },
+        {
+          "top1_rmsd": 0.40907240086103286,
+          "best_rmsd": 0.40907240086103286,
+          "top1_score": -6.094,
+          "n_poses": 8,
+          "box": [
+            13.0,
+            13.0,
+            13.0
+          ]
+        }
+      ],
+      "pipeline": {
+        "pocket_found": true,
+        "pocket_id": "P2",
+        "pocket_dist": 0.2155578822898493,
+        "top1_rmsd": 0.3458753179616449,
+        "best_rmsd": 0.3458753179616449,
+        "label": "MODERATE"
+      }
+    },
+    {
+      "pdb": "1STP",
+      "ligand": "BTN",
+      "smiles": "O=C(O)CCCC[C@@H]1SC[C@@H]2NC(=O)N[C@@H]21",
+      "heavy_atoms": 16,
+      "rotatable_bonds": 5,
+      "native": [
+        {
+          "top1_rmsd": 0.8677500792703338,
+          "best_rmsd": 0.8677500792703338,
+          "top1_score": -6.242,
+          "n_poses": 9,
+          "box": [
+            17.7,
+            17.7,
+            17.7
+          ]
+        },
+        {
+          "top1_rmsd": 0.8090590553527025,
+          "best_rmsd": 0.8090590553527025,
+          "top1_score": -6.405,
+          "n_poses": 9,
+          "box": [
+            14.4,
+            14.4,
+            14.4
+          ]
+        },
+        {
+          "top1_rmsd": 0.8591909550841899,
+          "best_rmsd": 0.8591909550841899,
+          "top1_score": -6.284,
+          "n_poses": 9,
+          "box": [
+            17.8,
+            17.8,
+            17.8
+          ]
+        }
+      ],
+      "pipeline": {
+        "pocket_found": true,
+        "pocket_id": "P1",
+        "pocket_dist": 0.9748691699081982,
+        "top1_rmsd": 0.8339690456216459,
+        "best_rmsd": 0.8339690456216459,
+        "label": "STRONG"
+      }
+    },
+    {
+      "pdb": "181L",
+      "ligand": "BNZ",
+      "smiles": "c1ccccc1",
+      "heavy_atoms": 6,
+      "rotatable_bonds": 0,
+      "native": [
+        {
+          "top1_rmsd": 0.9474622183596866,
+          "best_rmsd": 0.8243863943453931,
+          "top1_score": -5.468,
+          "n_poses": 6,
+          "box": [
+            10.8,
+            10.8,
+            10.8
+          ]
+        },
+        {
+          "top1_rmsd": 0.8805336446868476,
+          "best_rmsd": 0.8750999598572393,
+          "top1_score": -5.47,
+          "n_poses": 8,
+          "box": [
+            10.7,
+            10.7,
+            10.7
+          ]
+        },
+        {
+          "top1_rmsd": 0.8747873257691534,
+          "best_rmsd": 0.7505808093623372,
+          "top1_score": -5.466,
+          "n_poses": 6,
+          "box": [
+            10.8,
+            10.8,
+            10.8
+          ]
+        }
+      ],
+      "pipeline": {
+        "pocket_found": true,
+        "pocket_id": "P1",
+        "pocket_dist": 13.16474562884609,
+        "top1_rmsd": 12.301296603540727,
+        "best_rmsd": 12.273643418465245,
+        "label": "WEAK"
+      }
+    }
+  ]
+}
