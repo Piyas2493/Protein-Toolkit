@@ -287,6 +287,34 @@ mode |   affinity | dist from best mode
 """
 
 
+def test_receptor_excludes_bound_ligand_additives_and_altlocs(tmp_path):
+    # The receptor must be protein + kept metals only. Building it from
+    # every ATOM/HETATM record left the crystal ligand sitting in its own
+    # pocket (so docking it back was impossible), duplicated metals, and
+    # kept both alternate conformations of a disordered residue.
+    def line(record, serial, name, res, resnum, x, alt=" ", el="C"):
+        return (f"{record:<6s}{serial:>5d} {name:<4s}{alt}{res:>3s} A{resnum:>4d}"
+                f"    {x:>8.3f}{0.0:>8.3f}{0.0:>8.3f}{1.00:>6.2f}{10.00:>6.2f}"
+                f"          {el:>2s}")
+
+    pdb = tmp_path / "t.pdb"
+    pdb.write_text("\n".join([
+        line("ATOM", 1, "CA", "ALA", 1, 0.0),
+        line("ATOM", 2, "CB", "SER", 2, 3.0, alt="A"),
+        line("ATOM", 3, "CB", "SER", 2, 3.4, alt="B"),     # 2nd conformer
+        line("HETATM", 4, "ZN", "ZN", 3, 6.0, el="ZN"),    # metal: keep once
+        line("HETATM", 5, "C1", "LIG", 4, 9.0),            # bound ligand
+        line("HETATM", 6, "C1", "GOL", 5, 12.0),           # additive
+        "END",
+    ]) + "\n", encoding="utf-8")
+
+    prep = ReceptorPreparation().prepare(str(pdb), chain="A")
+    names = sorted((a.residue_name, a.atom_name) for a in prep.receptor_atoms)
+
+    assert names == [("ALA", "CA"), ("SER", "CB"), ("ZN", "ZN")]
+    assert "LIG" in prep.known_ligand_resnames   # still reported, not docked into
+
+
 def _classify(**overrides):
     from docking.pose_analysis import PoseAnalyzer
     args = dict(score=-3.0, n_clashes=0, n_hbond_residues=0, n_metal=0,
@@ -378,6 +406,7 @@ def test_docked_coordinates_replace_input_ligand(tmp_path):
     out = tmp_path / "out.pdbqt"
     out.write_text(
         "MODEL 1\n"
+        "REMARK VINA RESULT:     -5.000      0.000      0.000\n"
         "ATOM      1  C   UNL     1      10.000  20.000  30.000  1.00  0.00    +0.000 A \n"
         "ATOM      2  O   UNL     1      11.000  21.000  31.000  1.00  0.00    -0.300 OA\n"
         "ATOM      3  H   UNL     1      11.500  21.500  31.500  1.00  0.00    +0.200 HD\n"
@@ -393,6 +422,39 @@ def test_docked_coordinates_replace_input_ligand(tmp_path):
     assert [a.element for a in atoms] == ["C", "O"]   # AD types mapped, H dropped
     assert atoms[0].aromatic is True                   # "A" = aromatic carbon
     assert (atoms[0].x, atoms[0].y, atoms[0].z) == (10.0, 20.0, 30.0)
+
+
+def test_poses_outside_vina_energy_window_are_dropped_not_fatal(tmp_path):
+    # Real case (181L benzene): Vina's stdout listed 8 modes but wrote 6
+    # to the PDBQT, because modes 7-8 (+0.08, +24.8) were outside the 3
+    # kcal/mol --energy_range. The file's models are a prefix of the table.
+    # A real disagreement (scores that don't line up) must still raise.
+    import pytest
+    from docking.engines.vina_adapter import _attach_docked_coordinates
+    from docking.manager import DockedPose
+
+    def model(n, score):
+        return (f"MODEL {n}\n"
+                f"REMARK VINA RESULT:   {score:8.3f}      0.000      0.000\n"
+                "ATOM      1  C   UNL     1       1.000   2.000   3.000"
+                "  1.00  0.00    +0.000 C \n"
+                "ENDMDL\n")
+
+    out = tmp_path / "out.pdbqt"
+    out.write_text(model(1, -5.468) + model(2, -4.273), encoding="utf-8")
+    lig = load_ligand(smiles="C")
+    table = [-5.468, -4.273, 0.07634, 24.81]
+    poses = [DockedPose(pose_id=i + 1, score=sc, ligand=lig)
+             for i, sc in enumerate(table)]
+
+    assert _attach_docked_coordinates(poses, str(out), lig) == 2
+    assert [p.pose_id for p in poses] == [1, 2]
+
+    out.write_text(model(1, -5.468) + model(2, -3.000), encoding="utf-8")
+    poses = [DockedPose(pose_id=i + 1, score=sc, ligand=lig)
+             for i, sc in enumerate(table)]
+    with pytest.raises(RuntimeError):
+        _attach_docked_coordinates(poses, str(out), lig)
 
 
 def test_ligand_pdbqt_uses_meeko_torsion_tree():

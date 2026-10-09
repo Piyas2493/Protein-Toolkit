@@ -27,6 +27,14 @@ def parse_pdb(pdb_file):
             if record not in ("ATOM", "HETATM"):
                 continue
 
+            # Alternate locations (column 17): a disordered residue is
+            # written once per conformer, each at partial occupancy.
+            # Keeping all of them puts overlapping copies of the same
+            # atom in the structure (spurious steric clashes, doubled
+            # contacts). Keep the primary conformer only.
+            if line[16] not in (" ", "A"):
+                continue
+
             atom = Atom(
 
                 serial=int(line[6:11]),

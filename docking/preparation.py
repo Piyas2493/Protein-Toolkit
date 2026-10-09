@@ -110,9 +110,15 @@ class ReceptorPreparation:
         prep.record("receptor_loaded", n_atoms=len(structure.atoms),
                     n_chains=len(structure.chains))
 
-        chain_atoms = structure.atoms
+        # Protein only (ATOM records). structure.atoms also holds every
+        # HETATM — the bound crystal ligand, crystallization additives,
+        # metals — and building the receptor from it left the bound
+        # ligand sitting in its own pocket (docking it back is then
+        # impossible) and duplicated metals, which are re-added below.
+        protein_atoms = [a for c in structure.chains for a in c.atoms]
+        chain_atoms = protein_atoms
         if chain is not None:
-            chain_atoms = [a for a in structure.atoms if a.chain_id == chain]
+            chain_atoms = [a for a in protein_atoms if a.chain_id == chain]
             prep.record("chain_selected", chain=chain,
                         atoms_after=len(chain_atoms))
 
