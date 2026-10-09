@@ -160,10 +160,18 @@ class VinaAdapter(DockingAdapter):
             )
 
         poses = _parse_vina_cli_stdout(proc.stdout, request.ligand)
-        _attach_docked_coordinates(poses, out_path, request.ligand)
+        dropped = _attach_docked_coordinates(poses, out_path, request.ligand)
+        for pose in poses:
+            pose.provenance["pdbqt"] = out_path
+        warnings = [] if poses else ["Vina CLI produced no poses."]
+        if dropped:
+            warnings.append(
+                f"{dropped} mode(s) fell outside Vina's energy window "
+                "(--energy_range, default 3 kcal/mol from the best) and "
+                "were not written; dropped.")
         return DockingResult(
             request=request, poses=poses, engine=self.name,
-            warnings=[] if poses else ["Vina CLI produced no poses."],
+            warnings=warnings,
         )
 
 
@@ -196,21 +204,33 @@ def _read_pdbqt_models(text: str) -> List[List[tuple]]:
     return models
 
 
-def _attach_docked_coordinates(poses, out_path: str, input_ligand) -> None:
+def _attach_docked_coordinates(poses, out_path: str, input_ligand) -> int:
     """Replace each pose's placeholder ligand with one at its DOCKED
     coordinates. Without this, pose analysis runs on the undocked input
     conformer (wherever embedding left it, typically the origin) and
-    reports contacts for a molecule that is nowhere near the pocket."""
+    reports contacts for a molecule that is nowhere near the pocket.
+
+    Vina's stdout table lists every mode up to --num_modes, but the output
+    file only holds modes within --energy_range of the best. The file's
+    models are therefore a prefix of the table: `poses` is truncated to it
+    in place and the number dropped is returned. Anything else (more
+    models than rows, or REMARK scores that don't match the table) means
+    the two are out of step, and raises."""
     from ligand import Ligand, LigandAtom
 
     text = Path(out_path).read_text(encoding="utf-8")
     models = _read_pdbqt_models(text)
-    if len(models) != len(poses):
+    scores = [float(s) for s in re.findall(
+        rf"REMARK VINA RESULT:\s+({_NUM})", text)]
+    if (len(models) > len(poses) or len(scores) != len(models)
+            or any(abs(s - p.score) > 0.01 for s, p in zip(scores, poses))):
         raise RuntimeError(
-            f"Vina reported {len(poses)} pose(s) but its output PDBQT "
-            f"contains {len(models)} model(s); cannot recover docked "
-            "coordinates."
+            f"Vina reported {len(poses)} pose(s) but its output PDBQT holds "
+            f"{len(models)} model(s) scored {scores}; cannot recover "
+            "docked coordinates."
         )
+    dropped = len(poses) - len(models)
+    del poses[len(models):]
     for pose, atoms in zip(poses, models):
         pose.ligand = Ligand(
             name=f"{input_ligand.name}_pose{pose.pose_id}",
@@ -221,6 +241,7 @@ def _attach_docked_coordinates(poses, out_path: str, input_ligand) -> None:
             ],
             source_format="docked",
         )
+    return dropped
 
 
 def _parse_vina_cli_stdout(stdout: str, ligand) -> List[DockedPose]:
