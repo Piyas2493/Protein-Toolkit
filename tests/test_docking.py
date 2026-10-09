@@ -275,6 +275,126 @@ def test_receptor_atom_typing_acceptors_and_aromaticity():
     assert _autodock_atom_type(atom("ZN", "ZN", "ZN")) == "Zn"
 
 
+VINA_STDOUT_TABLE = """\
+mode |   affinity | dist from best mode
+     | (kcal/mol) | rmsd l.b.| rmsd u.b.
+-----+------------+----------+----------
+   1       -6.185          0          0
+   2         -6.1      1.767      2.689
+   3       -6.098       3.55      6.624
+   4       -5.809      1.851      2.248
+   5       -5.663      3.098      6.493
+"""
+
+
+def _classify(**overrides):
+    from docking.pose_analysis import PoseAnalyzer
+    args = dict(score=-3.0, n_clashes=0, n_hbond_residues=0, n_metal=0,
+                n_nonpolar_residues=0, active_overlap=0)
+    args.update(overrides)
+    return PoseAnalyzer()._classify_pose(**args)
+
+
+def test_pose_label_counts_independent_lines_of_evidence():
+    # No support at all, or a single line, is WEAK.
+    assert _classify() == "WEAK"
+    assert _classify(score=-7.0) == "WEAK"
+    # Two independent lines -> MODERATE; three -> STRONG.
+    assert _classify(score=-7.0, n_metal=1) == "MODERATE"
+    assert _classify(score=-7.0, n_hbond_residues=2,
+                     n_nonpolar_residues=3) == "STRONG"
+    # STRONG is reachable without user-supplied active-site residues.
+    assert _classify(score=-6.5, n_metal=1, n_nonpolar_residues=4) == "STRONG"
+    # A strained pose is WEAK regardless of how much else supports it.
+    assert _classify(score=-9.0, n_metal=1, n_hbond_residues=4,
+                     n_nonpolar_residues=5, n_clashes=6) == "WEAK"
+
+
+def test_pose_label_not_inflated_by_atom_pair_counts():
+    # A tiny molecule touching ONE residue many times must not look
+    # supported: the rule counts distinct residues, not atom pairs.
+    assert _classify(score=-2.9, n_hbond_residues=1,
+                     n_nonpolar_residues=1) == "WEAK"
+
+
+def test_metal_coordination_ignores_alpha_carbons():
+    # "CA" is every residue's alpha carbon (and calcium's residue name):
+    # matching on atom name counted each backbone C-alpha as a calcium.
+    from docking.pose_analysis import PoseAnalyzer
+    from ligand import LigandAtom
+    from structure.models import Atom
+
+    alpha_c = Atom(serial=1, atom_name="CA", residue_name="ALA", chain_id="A",
+                   residue_number=1, x=0, y=0, z=0, occupancy=1.0,
+                   b_factor=0.0, element="C")
+    zinc = Atom(serial=2, atom_name="ZN", residue_name="ZN", chain_id="A",
+                residue_number=2, x=0, y=0, z=0, occupancy=1.0,
+                b_factor=0.0, element="ZN")
+    donor = LigandAtom(serial=1, element="N", x=2.0, y=0, z=0)
+    far_donor = LigandAtom(serial=2, element="N", x=3.8, y=0, z=0)
+
+    analyzer = PoseAnalyzer()
+    assert analyzer._classify_interaction(donor, alpha_c, 2.0) != "Metal Coordination"
+    assert analyzer._classify_interaction(donor, zinc, 2.0) == "Metal Coordination"
+    # Beyond coordination distance it is not coordination.
+    assert analyzer._classify_interaction(far_donor, zinc, 3.8) != "Metal Coordination"
+
+
+def test_pose_ranking_is_score_dominant():
+    # Atom-pair contact counts used to outweigh many kcal/mol of score.
+    from docking.pose_analysis import PoseAnalyzer, PoseAnalysis
+
+    def pose(pose_id, score, n_hbonds):
+        return PoseAnalysis(
+            pose_id=pose_id, score=score, rmsd_to_input=0.0, n_contacts=50,
+            n_hbonds=n_hbonds, n_hydrophobic=0, n_ionic=0, n_aromatic=0,
+            n_metal=0, n_clashes=0, active_overlap=0, active_overlap_ratio=0.0,
+            pocket_occupancy=0.0, overall="WEAK")
+
+    analyzer = PoseAnalyzer()
+    better = pose(1, -6.2, n_hbonds=4)
+    worse_but_many_pairs = pose(2, -5.8, n_hbonds=9)
+    assert analyzer._rank_key(better) > analyzer._rank_key(worse_but_many_pairs)
+
+
+def test_vina_stdout_parser_keeps_best_pose():
+    # Real Vina output. C++ stream formatting prints "0" and "-6.1", not
+    # "0.000" / "-6.100"; a regex requiring a decimal point silently
+    # dropped mode 1 — the best pose of every run.
+    from docking.engines.vina_adapter import _parse_vina_cli_stdout
+    poses = _parse_vina_cli_stdout(VINA_STDOUT_TABLE, ligand=None)
+    assert [p.pose_id for p in poses] == [1, 2, 3, 4, 5]
+    assert poses[0].score == -6.185
+    assert poses[1].score == -6.1
+
+
+def test_docked_coordinates_replace_input_ligand(tmp_path):
+    # Poses must carry the DOCKED coordinates from Vina's output PDBQT,
+    # not the undocked input conformer — otherwise pose analysis counts
+    # contacts for a molecule that is nowhere near the pocket.
+    from docking.engines.vina_adapter import _attach_docked_coordinates
+    from docking.manager import DockedPose
+
+    out = tmp_path / "out.pdbqt"
+    out.write_text(
+        "MODEL 1\n"
+        "ATOM      1  C   UNL     1      10.000  20.000  30.000  1.00  0.00    +0.000 A \n"
+        "ATOM      2  O   UNL     1      11.000  21.000  31.000  1.00  0.00    -0.300 OA\n"
+        "ATOM      3  H   UNL     1      11.500  21.500  31.500  1.00  0.00    +0.200 HD\n"
+        "ENDMDL\n",
+        encoding="utf-8",
+    )
+    undocked = load_ligand(smiles="CO")
+    poses = [DockedPose(pose_id=1, score=-5.0, ligand=undocked)]
+
+    _attach_docked_coordinates(poses, str(out), undocked)
+
+    atoms = poses[0].ligand.atoms
+    assert [a.element for a in atoms] == ["C", "O"]   # AD types mapped, H dropped
+    assert atoms[0].aromatic is True                   # "A" = aromatic carbon
+    assert (atoms[0].x, atoms[0].y, atoms[0].z) == (10.0, 20.0, 30.0)
+
+
 def test_ligand_pdbqt_uses_meeko_torsion_tree():
     # A flexible molecule (several rotatable bonds) must come out with
     # a real BRANCH/ENDBRANCH torsion tree, not a single rigid ROOT —

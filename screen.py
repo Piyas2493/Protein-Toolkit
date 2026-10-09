@@ -85,7 +85,7 @@ def screen_one(candidate: Candidate, prep, pockets, *, docking_engine,
         row["error"] = "no compatible pocket"
     elif pose_report and pose_report.ranked:
         best = pose_report.ranked[0]
-        row["best_score"] = best.score
+        row["best_score"] = min(a.score for a in pose_report.analyses)
         row["overall"] = best.overall
     else:
         warnings = ", ".join(result.warnings) if result else ""
