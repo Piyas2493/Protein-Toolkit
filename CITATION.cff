@@ -14,8 +14,8 @@ authors:
     given-names: "Piyas"
     # orcid: "https://orcid.org/0000-0000-0000-0000"
     # affiliation: "TODO"
-# TODO(author): add `license:` (SPDX id) once LICENSE is chosen, plus
-# `version:` and `date-released:` when you tag a release.
+license: MIT
+# TODO(author): add `version:` and `date-released:` when you tag a release.
 keywords:
   - bioinformatics
   - enzyme classification

@@ -213,5 +213,6 @@ Read this before citing any number from this tool in a paper.
 
 ## License
 
-Not yet chosen — `licence` is currently empty. Pick one (MIT/BSD/Apache-2.0
-are common for research software) before publishing.
+MIT — see [LICENSE](LICENSE). The copyright line reads "Piyas" (the git
+author name); change it to your full legal name or institution before
+publishing.
