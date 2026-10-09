@@ -29,6 +29,13 @@ Three modes:
 
 Output: `results/redocking.{json,md}`.
 
+Receptors are protonated at pH 7.4 (`pdb2pqr`/PROPKA) and typed/charged by
+meeko before docking (`docking.preparation.write_prepared_receptor_pdbqt`);
+the route actually used (`pdb2pqr+meeko`, or the `legacy` no-hydrogen
+fallback) is stored per complex in the JSON and printed in the markdown, so
+a run that silently fell back is visible. The first published numbers used
+the legacy receptor; both are reported in the top-level README.
+
 Four complexes is a smoke test of correctness, not a docking benchmark. A
 publishable comparison needs a standard set (PDBbind core, CASF-2016, Astex
 Diverse) and a baseline engine run through the same harness.

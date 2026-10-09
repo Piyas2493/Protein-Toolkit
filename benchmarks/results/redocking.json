@@ -9,7 +9,7 @@
   "summary": {
     "native_runs": 12,
     "native_top1_success": 9,
-    "native_best_of_n_success": 11,
+    "native_best_of_n_success": 12,
     "native_top1_rate": 0.75
   },
   "complexes": [
@@ -17,13 +17,22 @@
       "pdb": "3HS4",
       "ligand": "AZM",
       "smiles": "CC(=O)Nc1nnc(S(N)(=O)=O)s1",
+      "receptor_prep": {
+        "route": "pdb2pqr+meeko",
+        "ph": 7.4,
+        "n_atoms": 2498,
+        "n_hd": 448,
+        "net_charge": -0.0,
+        "hd_near_metal": 0,
+        "residues_left_out": []
+      },
       "heavy_atoms": 13,
       "rotatable_bonds": 2,
       "native": [
         {
-          "top1_rmsd": 3.309839843071606,
-          "best_rmsd": 2.446535982148009,
-          "top1_score": -5.918,
+          "top1_rmsd": 5.3793466887590995,
+          "best_rmsd": 1.453229004436183,
+          "top1_score": -6.536,
           "n_poses": 9,
           "box": [
             16.9,
@@ -32,9 +41,9 @@
           ]
         },
         {
-          "top1_rmsd": 3.2746379007368627,
-          "best_rmsd": 1.4041543004948638,
-          "top1_score": -5.914,
+          "top1_rmsd": 5.360078637862288,
+          "best_rmsd": 1.7862699224533,
+          "top1_score": -6.535,
           "n_poses": 9,
           "box": [
             16.9,
@@ -43,9 +52,9 @@
           ]
         },
         {
-          "top1_rmsd": 3.413182836129093,
-          "best_rmsd": 1.4089286006915775,
-          "top1_score": -5.94,
+          "top1_rmsd": 5.239805012228651,
+          "best_rmsd": 1.3734700838765161,
+          "top1_score": -6.332,
           "n_poses": 9,
           "box": [
             16.7,
@@ -58,30 +67,39 @@
         "pocket_found": true,
         "pocket_id": "P2",
         "pocket_dist": 0.07782670211521196,
-        "top1_rmsd": 5.263690272326764,
-        "best_rmsd": 2.4355286371507674,
-        "label": "MODERATE"
+        "top1_rmsd": 5.370953408802444,
+        "best_rmsd": 2.2567837520476077,
+        "label": "STRONG"
       },
       "blind": {
         "pocket_found": true,
         "pocket_id": "P15",
         "pocket_dist": 6.272030990481643,
-        "top1_rmsd": 3.3803596777495533,
-        "best_rmsd": 3.3803596777495533,
-        "label": "WEAK"
+        "top1_rmsd": 1.3272233245761227,
+        "best_rmsd": 1.3272233245761227,
+        "label": "MODERATE"
       }
     },
     {
       "pdb": "3PTB",
       "ligand": "BEN",
       "smiles": "N=C(N)c1ccccc1",
+      "receptor_prep": {
+        "route": "pdb2pqr+meeko",
+        "ph": 7.4,
+        "n_atoms": 2013,
+        "n_hd": 383,
+        "net_charge": 7.0,
+        "hd_near_metal": 0,
+        "residues_left_out": []
+      },
       "heavy_atoms": 9,
       "rotatable_bonds": 1,
       "native": [
         {
-          "top1_rmsd": 0.3954140056656688,
-          "best_rmsd": 0.37677802662567894,
-          "top1_score": -6.058,
+          "top1_rmsd": 0.39496809027274216,
+          "best_rmsd": 0.39137077235438616,
+          "top1_score": -5.989,
           "n_poses": 9,
           "box": [
             13.0,
@@ -90,9 +108,9 @@
           ]
         },
         {
-          "top1_rmsd": 0.42845911070981985,
-          "best_rmsd": 0.37577233820793193,
-          "top1_score": -6.045,
+          "top1_rmsd": 0.38974939748500276,
+          "best_rmsd": 0.388277822338834,
+          "top1_score": -5.98,
           "n_poses": 9,
           "box": [
             13.1,
@@ -101,10 +119,10 @@
           ]
         },
         {
-          "top1_rmsd": 0.40907240086103286,
-          "best_rmsd": 0.40907240086103286,
-          "top1_score": -6.094,
-          "n_poses": 8,
+          "top1_rmsd": 0.3859153292041213,
+          "best_rmsd": 0.3859153292041213,
+          "top1_score": -5.995,
+          "n_poses": 9,
           "box": [
             13.0,
             13.0,
@@ -116,16 +134,16 @@
         "pocket_found": true,
         "pocket_id": "P2",
         "pocket_dist": 0.2155578822898493,
-        "top1_rmsd": 0.3458753179616449,
-        "best_rmsd": 0.3458753179616449,
-        "label": "MODERATE"
+        "top1_rmsd": 0.4026073201483295,
+        "best_rmsd": 0.4019589930083928,
+        "label": "WEAK"
       },
       "blind": {
         "pocket_found": true,
         "pocket_id": "P5",
         "pocket_dist": 8.923442170644659,
-        "top1_rmsd": 2.8104976437268423,
-        "best_rmsd": 2.8104976437268423,
+        "top1_rmsd": 2.549227776655038,
+        "best_rmsd": 2.549227776655038,
         "label": "WEAK"
       }
     },
@@ -133,13 +151,22 @@
       "pdb": "1STP",
       "ligand": "BTN",
       "smiles": "O=C(O)CCCC[C@@H]1SC[C@@H]2NC(=O)N[C@@H]21",
+      "receptor_prep": {
+        "route": "pdb2pqr+meeko",
+        "ph": 7.4,
+        "n_atoms": 1115,
+        "n_hd": 213,
+        "net_charge": -2.0,
+        "hd_near_metal": 0,
+        "residues_left_out": []
+      },
       "heavy_atoms": 16,
       "rotatable_bonds": 5,
       "native": [
         {
-          "top1_rmsd": 0.8677500792703338,
-          "best_rmsd": 0.8677500792703338,
-          "top1_score": -6.242,
+          "top1_rmsd": 0.6201737359385097,
+          "best_rmsd": 0.6201737359385097,
+          "top1_score": -7.479,
           "n_poses": 9,
           "box": [
             17.7,
@@ -148,9 +175,9 @@
           ]
         },
         {
-          "top1_rmsd": 0.8090590553527025,
-          "best_rmsd": 0.8090590553527025,
-          "top1_score": -6.405,
+          "top1_rmsd": 0.6133823335170612,
+          "best_rmsd": 0.6133823335170612,
+          "top1_score": -7.496,
           "n_poses": 9,
           "box": [
             14.4,
@@ -159,9 +186,9 @@
           ]
         },
         {
-          "top1_rmsd": 0.8591909550841899,
-          "best_rmsd": 0.8591909550841899,
-          "top1_score": -6.284,
+          "top1_rmsd": 0.6774999286331458,
+          "best_rmsd": 0.6774999286331458,
+          "top1_score": -7.443,
           "n_poses": 9,
           "box": [
             17.8,
@@ -174,31 +201,40 @@
         "pocket_found": true,
         "pocket_id": "P1",
         "pocket_dist": 0.9748691699081982,
-        "top1_rmsd": 0.8339690456216459,
-        "best_rmsd": 0.8339690456216459,
+        "top1_rmsd": 0.5983396076407441,
+        "best_rmsd": 0.5983396076407441,
         "label": "STRONG"
       },
       "blind": {
         "pocket_found": true,
         "pocket_id": "P1",
         "pocket_dist": 9.078472720693107,
-        "top1_rmsd": 5.986293104558978,
-        "best_rmsd": 5.882918841267008,
-        "label": "MODERATE"
+        "top1_rmsd": 5.049892495679488,
+        "best_rmsd": 5.049892495679488,
+        "label": "WEAK"
       }
     },
     {
       "pdb": "181L",
       "ligand": "BNZ",
       "smiles": "c1ccccc1",
+      "receptor_prep": {
+        "route": "pdb2pqr+meeko",
+        "ph": 7.4,
+        "n_atoms": 1615,
+        "n_hd": 325,
+        "net_charge": 8.0,
+        "hd_near_metal": 0,
+        "residues_left_out": []
+      },
       "heavy_atoms": 6,
       "rotatable_bonds": 0,
       "native": [
         {
-          "top1_rmsd": 0.9474622183596866,
-          "best_rmsd": 0.8243863943453931,
-          "top1_score": -5.468,
-          "n_poses": 6,
+          "top1_rmsd": 0.8619295388070451,
+          "best_rmsd": 0.32454983000629856,
+          "top1_score": -5.471,
+          "n_poses": 8,
           "box": [
             10.8,
             10.8,
@@ -206,10 +242,10 @@
           ]
         },
         {
-          "top1_rmsd": 0.8805336446868476,
-          "best_rmsd": 0.8750999598572393,
-          "top1_score": -5.47,
-          "n_poses": 8,
+          "top1_rmsd": 0.8696009101218666,
+          "best_rmsd": 0.31093572953927384,
+          "top1_score": -5.464,
+          "n_poses": 7,
           "box": [
             10.7,
             10.7,
@@ -217,10 +253,10 @@
           ]
         },
         {
-          "top1_rmsd": 0.8747873257691534,
-          "best_rmsd": 0.7505808093623372,
-          "top1_score": -5.466,
-          "n_poses": 6,
+          "top1_rmsd": 0.8754869046907078,
+          "best_rmsd": 0.7858367411288217,
+          "top1_score": -5.465,
+          "n_poses": 5,
           "box": [
             10.8,
             10.8,
@@ -232,16 +268,16 @@
         "pocket_found": true,
         "pocket_id": "P1",
         "pocket_dist": 13.16474562884609,
-        "top1_rmsd": 12.301296603540727,
-        "best_rmsd": 12.273643418465245,
+        "top1_rmsd": 12.282376182099544,
+        "best_rmsd": 11.732596787354355,
         "label": "WEAK"
       },
       "blind": {
         "pocket_found": true,
         "pocket_id": "P1",
         "pocket_dist": 11.312657265586331,
-        "top1_rmsd": 17.264024619482704,
-        "best_rmsd": 13.893622860730616,
+        "top1_rmsd": 17.451806292503438,
+        "best_rmsd": 13.509408052946025,
         "label": "WEAK"
       }
     }

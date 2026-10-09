@@ -3,25 +3,34 @@
   "pdb": "1CA2",
   "chain": "A",
   "seed": 42,
+  "receptor_prep": {
+    "route": "pdb2pqr+meeko",
+    "ph": 7.4,
+    "n_atoms": 2484,
+    "n_hd": 443,
+    "net_charge": -2.0,
+    "hd_near_metal": 0,
+    "residues_left_out": []
+  },
   "n_docked": 98,
   "n_failed": 2,
   "n_active": 49,
   "n_weak": 49,
-  "roc_auc": 0.5837151187005414,
+  "roc_auc": 0.49416909620991256,
   "roc_auc_95ci": [
-    0.4747813411078717,
-    0.6926384839650145
+    0.3844179508538109,
+    0.6066274468971261
   ],
   "size_only_auc": 0.5006247396917951,
-  "ef_top10pct": 1.1111111111111112,
-  "spearman_score_vs_pchembl_actives": -0.06268976653978847,
+  "ef_top10pct": 0.6666666666666666,
+  "spearman_score_vs_pchembl_actives": 0.026687758643069322,
   "pose_labels": {
-    "active/MODERATE": 28,
-    "active/STRONG": 16,
-    "active/WEAK": 5,
-    "weak/MODERATE": 17,
-    "weak/STRONG": 26,
-    "weak/WEAK": 6
+    "active/MODERATE": 27,
+    "active/STRONG": 21,
+    "active/WEAK": 1,
+    "weak/MODERATE": 12,
+    "weak/STRONG": 33,
+    "weak/WEAK": 4
   },
   "pockets": {
     "P1": 98
@@ -41,6 +50,6 @@
     "weak": 0.061224489795918366
   },
   "sulfonamide_substructure_auc": 0.8979591836734695,
-  "vina_auc_within_sulfonamides": 0.5158730158730159,
+  "vina_auc_within_sulfonamides": 0.48412698412698413,
   "n_sulfonamides": 45
 }

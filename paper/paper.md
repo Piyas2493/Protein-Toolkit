@@ -56,7 +56,9 @@ single stage.
   scoring, and a centroid-distance check that candidate catalytic residues
   are close together in 3D.
 - **Docking and screening** (`docking/`, `screen.py`, `pipeline.py`): receptor
-  and ligand preparation (RDKit, Meeko), Vina docking in a box sized to the
+  protonation at pH 7.4 (PDB2PQR [@dolinsky2004pdb2pqr] with PROPKA
+  [@olsson2011propka]) and AutoDock typing and charging (Meeko), ligand
+  preparation (RDKit, Meeko), Vina docking in a box sized to the
   ligand, heuristic pose analysis (contacts, hydrogen bonds, metal
   coordination, clashes) producing an inspectable STRONG/MODERATE/WEAK label,
   and library screening that prepares the receptor and pockets once.
@@ -68,41 +70,59 @@ and the raw outputs are committed to the repository.
 
 **Redocking.** Four crystal complexes (3HS4, 3PTB, 1STP, 181L) were
 redocked into their own proteins with three random seeds. The top-ranked pose
-was within 2 Å of the crystal pose in 9 of 12 runs (best of nine poses: 11 of
+was within 2 Å of the crystal pose in 9 of 12 runs (best of nine poses: 12 of
 12). The only systematic failure is acetazolamide in carbonic anhydrase
 (3HS4): Vina's scoring has no explicit treatment of zinc-coordinating
-sulfonamides, and it places the ligand 3.3 Å away in every seed. Running this
+sulfonamides, and its top-ranked pose is 5.3 Å from the crystal pose in every
+seed (a pose within 1.4--1.8 Å exists but is not ranked first). Running this
 benchmark caught a receptor-preparation bug that had produced 0 of 4
 successes (the prepared receptor still contained the crystal ligand and
 crystallisation additives) and an inconsistency between Vina's score table
 and its output file when poses fall outside its energy window. Four
 complexes is a correctness check, not a docking benchmark; comparison on
-CASF-2016 [@su2019casf] against a second engine is future work.
+CASF-2016 [@su2019casf] against a second engine is future work. These
+numbers were produced twice: first with a receptor that had no hydrogens
+and zero partial charges, then with the receptor protonated at pH 7.4 and
+typed with AutoDock donor atoms. The success count did not change (9 of
+12 both times, with the same three complexes succeeding in every seed);
+best-of-nine improved from 11 to 12 of 12 and the top-1 acetazolamide error
+grew from 3.3 to 5.3 Å. We read the persistent acetazolamide miss as a
+missing metal-coordination term, which receptor hydrogens do not supply;
+we did not test that.
 
 The built-in site finder fails this test. The pocket detector builds pockets
 from the structure's HETATM records, so on a holo structure it simply
 reports the ligand site. With every HETATM removed so that cavity detection
 must work from protein geometry alone, the selected pocket was 6--11 Å from
-the true site in all four complexes and none of the four top-ranked poses
-was within 2 Å. The toolkit should therefore be used with a known site.
+the true site in all four complexes. One of the four top-ranked poses (3HS4,
+1.3 Å) was within 2 Å, but only because the padded docking box around the
+wrong pocket still enclosed 12 of the crystal ligand's 13 heavy atoms; it is
+not evidence of site finding. The toolkit should therefore be used with a
+known site.
 
 **Screening enrichment.** For two targets, carbonic anhydrase II (a zinc
 metalloenzyme) and estrogen receptor α (no metal), 50 ChEMBL actives
 [@zdrazil2024chembl] (binding assays, pChEMBL ≥ 7) were docked into the known
 site together with 50 measured weak binders of the same target (pChEMBL ≤ 5)
 matched to each active's heavy-atom count. The best Vina score separated
-them barely better than chance: ROC AUC 0.58 (bootstrap 95% CI 0.47--0.69) for
-carbonic anhydrase II and 0.58 (0.46--0.68) for estrogen receptor α;
-top-10% enrichment factors were 1.1 and 1.4 (random is 1.0), and scores did
-not correlate with potency among the actives (Spearman −0.06 and 0.02). A
+them no better than chance within the uncertainty: ROC AUC 0.49 (bootstrap
+95% CI 0.38--0.61) for carbonic anhydrase II and 0.60 (0.49--0.70) for
+estrogen receptor α; top-10% enrichment factors were 0.7 and 1.6 (random is
+1.0), and scores did not correlate with potency among the actives (Spearman
+0.03 and 0.04). These are the results with the receptor protonated at pH 7.4
+and charged; with the earlier hydrogen-free, zero-charge receptor the AUCs
+were 0.58 (0.47--0.69) and 0.58 (0.46--0.68), so adding receptor hydrogens
+changed the per-ligand scores (they became about 0.2--0.4 kcal/mol more
+favourable on average, and their rank order stayed correlated with the
+earlier one at Spearman 0.9) but not the conclusion. A
 heavy-atom-count control scores 0.50 by construction. On carbonic anhydrase
 II, 86% of actives but 6% of weak binders carry a primary sulfonamide (the
 zinc-binding group), and that substructure alone reaches AUC 0.90, so a
 one-line rule outperforms the docking score. We report this as a negative
 result: in this pipeline, Vina is a way to generate plausible poses in a
 known site, not to rank compounds by potency. The STRONG/MODERATE/WEAK pose
-labels do not track potency either (STRONG for 16/49 actives vs 26/49 weak
-binders on carbonic anhydrase II, 32/50 vs 23/50 on estrogen receptor α).
+labels do not track potency either (STRONG for 21/49 actives vs 33/49 weak
+binders on carbonic anhydrase II, 34/50 vs 29/50 on estrogen receptor α).
 Both sets are small, so intervals are wide, and measured weak binders are a
 harder negative class than property-matched decoys [@mysinger2012dude].
 
@@ -122,8 +142,11 @@ comparison with CLEAN [@yu2023clean] has been run.
 
 # Limitations
 
-Receptors are prepared minimally (no explicit hydrogens, zero partial
-charges, single chain). Vina scores are not calibrated affinities and, as
+Receptor preparation handles a single chain; metals are added after
+protonation (PDB2PQR cannot see them), cofactors receive no hydrogens or
+charges, and residues without a backbone are omitted. Vina ignores partial
+charges, so the charge assignment is inert for the scoring used here.
+Vina scores are not calibrated affinities and, as
 shown above, do not rank potent against weak binders of one target. Pose
 labels are heuristics that cannot detect a confidently wrong pose. The
 rule-based confidences are hand-tuned weights, not probabilities. The
