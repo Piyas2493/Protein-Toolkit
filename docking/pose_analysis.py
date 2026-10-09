@@ -65,6 +65,10 @@ class PoseAnalysis:
     overall: str                # STRONG / MODERATE / WEAK
     contacts: List[ContactRecord] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    # Distinct-residue counts (n_hbonds / n_hydrophobic above count atom
+    # PAIRS, which a small molecule near a few residues inflates).
+    n_hbond_residues: int = 0
+    n_nonpolar_residues: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -78,6 +82,8 @@ class PoseAnalysis:
             "n_aromatic": self.n_aromatic,
             "n_metal": self.n_metal,
             "n_clashes": self.n_clashes,
+            "n_hbond_residues": self.n_hbond_residues,
+            "n_nonpolar_residues": self.n_nonpolar_residues,
             "active_overlap": self.active_overlap,
             "active_overlap_ratio": round(self.active_overlap_ratio, 3),
             "pocket_occupancy": round(self.pocket_occupancy, 3),
@@ -128,7 +134,11 @@ class PoseAnalysisReport:
 _OXYGEN_ATOMS = {"O", "OD1", "OD2", "OE1", "OE2", "OG", "OG1", "OH"}
 _NITROGEN_ATOMS = {"N", "NZ", "ND1", "ND2", "NE", "NE1", "NE2", "NH1", "NH2"}
 _SULFUR_ATOMS = {"SG", "SD"}
+# Matched against the RESIDUE name of metal-ion HETATM records only.
+# Never against atom names: "CA" is every residue's alpha carbon, so
+# matching it there counts each backbone C-alpha as a calcium ion.
 _METALS = {"ZN", "MG", "MN", "FE", "CU", "CA", "CO", "NI", "NA", "K"}
+_METAL_COORDINATION_DISTANCE = 3.0  # Angstrom, to a ligand N/O/S donor
 
 # Charged sidechains for ionic interactions
 _POSITIVE_RES = {"ARG", "LYS", "HIS"}
@@ -202,6 +212,8 @@ class PoseAnalyzer:
         contacts: List[ContactRecord] = []
         n_hbonds = n_hydrophobic = n_ionic = n_aromatic = n_metal = n_clashes = 0
         seen_residues: set = set()
+        hbond_residues: set = set()
+        nonpolar_residues: set = set()
 
         for la in pose.ligand.atoms:
             for ra in receptor_atoms:
@@ -228,14 +240,18 @@ class PoseAnalyzer:
 
                 if d < self.clash_cutoff and la.element != "H" and ra.element != "H":
                     n_clashes += 1
+                res_key = (ra.chain_id, ra.residue_name, ra.residue_number)
                 if interaction == "Hydrogen Bond":
                     n_hbonds += 1
+                    hbond_residues.add(res_key)
                 elif interaction == "Hydrophobic":
                     n_hydrophobic += 1
+                    nonpolar_residues.add(res_key)
                 elif interaction == "Ionic":
                     n_ionic += 1
                 elif interaction == "Aromatic":
                     n_aromatic += 1
+                    nonpolar_residues.add(res_key)
                 elif interaction == "Metal Coordination":
                     n_metal += 1
 
@@ -255,9 +271,10 @@ class PoseAnalyzer:
 
         overall = self._classify_pose(
             score=pose.score,
-            n_hbonds=n_hbonds,
-            n_hydrophobic=n_hydrophobic,
             n_clashes=n_clashes,
+            n_hbond_residues=len(hbond_residues),
+            n_metal=n_metal,
+            n_nonpolar_residues=len(nonpolar_residues),
             active_overlap=overlap,
         )
 
@@ -284,6 +301,8 @@ class PoseAnalyzer:
             overall=overall,
             contacts=contacts,
             warnings=warnings,
+            n_hbond_residues=len(hbond_residues),
+            n_nonpolar_residues=len(nonpolar_residues),
         )
 
     # ------------------------------------------------------------------
@@ -304,7 +323,8 @@ class PoseAnalyzer:
             if rec_name in _OXYGEN_ATOMS and lig_el in {"F"}:
                 return "Hydrogen Bond"
 
-        if rec_res in _METALS or rec_name in _METALS:
+        if (rec_res in _METALS and lig_el in {"N", "O", "S"}
+                and d <= _METAL_COORDINATION_DISTANCE):
             return "Metal Coordination"
 
         if rec_res in _POSITIVE_RES and lig_el in {"O", "N", "S"} and d <= 4.0:
@@ -326,34 +346,56 @@ class PoseAnalyzer:
     def _classify_pose(
         self,
         score: float,
-        n_hbonds: int,
-        n_hydrophobic: int,
         n_clashes: int,
+        n_hbond_residues: int,
+        n_metal: int,
+        n_nonpolar_residues: int,
         active_overlap: int,
     ) -> str:
-        # Cheap rule: STRONG if score <= -8 with multiple interactions and
-        # low clash; MODERATE if at least one H-bond + hydrophobic; WEAK otherwise.
+        """Count independent lines of support for the pose.
+
+          1. favorable docking score (<= -6.0 kcal/mol — a conventional
+             rule of thumb for Vina, not a calibrated cutoff)
+          2. polar anchoring: coordination to a metal ion, or H-bonds
+             to >= 2 DISTINCT residues
+          3. nonpolar enclosure: >= 3 DISTINCT residues in hydrophobic
+             or aromatic contact
+          4. contact with predicted active-site residues (only when the
+             caller supplies them)
+
+        STRONG = 3+ lines, MODERATE = 2, WEAK otherwise; a strained pose
+        (many clashes) is always WEAK. This labels how well-SUPPORTED the
+        pose geometry looks — it is not a validated binding predictor.
+        """
         if n_clashes > 5:
             return "WEAK"
-        if score <= -8.0 and n_hbonds >= 3 and active_overlap >= 1:
+
+        lines = 0
+        if score <= -6.0:
+            lines += 1
+        if n_metal >= 1 or n_hbond_residues >= 2:
+            lines += 1
+        if n_nonpolar_residues >= 3:
+            lines += 1
+        if active_overlap >= 1:
+            lines += 1
+
+        if lines >= 3:
             return "STRONG"
-        if (n_hbonds >= 2 and n_hydrophobic >= 3) or active_overlap >= 2:
-            return "MODERATE"
-        if score <= -6.5 and (n_hbonds + n_hydrophobic) >= 2:
+        if lines == 2:
             return "MODERATE"
         return "WEAK"
 
     def _rank_key(self, pa: PoseAnalysis) -> float:
-        # Lower docking score is better; more contacts better; clashes worse.
+        # The engine's own score is the primary ordering. The previous
+        # key added +3 per atom-PAIR H-bond contact, which let a pose
+        # with a few extra contacts outrank one that was many kcal/mol
+        # better — and ranked an inferior pose "best". Only clashes (a
+        # strained pose) and user-supplied active-site evidence adjust it.
         return (
             -pa.score * 2
-            + pa.n_hbonds * 3
-            + pa.n_hydrophobic
-            + pa.n_aromatic * 2
-            + pa.n_ionic * 2
             + pa.active_overlap * 5
             - pa.n_clashes * 4
-            - pa.rmsd_to_input * 0.1
         )
 
 

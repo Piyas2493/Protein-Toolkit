@@ -28,8 +28,13 @@ from ..manager import DockingAdapter, DockingRequest, DockingResult, DockedPose
 # `<project_root>/bin/`, checked as a fallback when the binary isn't on PATH.
 _BUNDLED_BIN_DIR = Path(__file__).resolve().parents[2] / "bin"
 
+# Vina prints with C++ stream formatting, which drops trailing zeros:
+# "0", "-6.1", "3.55" — NOT "0.000", "-6.100". Requiring a decimal point
+# here silently dropped mode 1 (its RMSD columns print as "0 0"), i.e.
+# the best pose of every run.
+_NUM = r"-?\d+(?:\.\d+)?"
 _RESULT_ROW_RE = re.compile(
-    r"^\s*(\d+)\s+(-?\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s*$"
+    rf"^\s*(\d+)\s+({_NUM})\s+({_NUM})\s+({_NUM})\s*$"
 )
 
 
@@ -115,6 +120,7 @@ class VinaAdapter(DockingAdapter):
                 provenance={"engine": "vina", "inter": float(row[2]),
                              "intra": float(row[3]), "pdbqt": out_path},
             ))
+        _attach_docked_coordinates(poses, out_path, request.ligand)
 
         return DockingResult(
             request=request, poses=poses, engine=self.name,
@@ -154,9 +160,66 @@ class VinaAdapter(DockingAdapter):
             )
 
         poses = _parse_vina_cli_stdout(proc.stdout, request.ligand)
+        _attach_docked_coordinates(poses, out_path, request.ligand)
         return DockingResult(
             request=request, poses=poses, engine=self.name,
             warnings=[] if poses else ["Vina CLI produced no poses."],
+        )
+
+
+# AutoDock atom type -> element, where they differ.
+_AD_TYPE_ELEMENT = {"A": "C", "NA": "N", "OA": "O", "SA": "S",
+                    "HD": "H", "HS": "H"}
+
+
+def _read_pdbqt_models(text: str) -> List[List[tuple]]:
+    """Split Vina's multi-model output PDBQT into one list of
+    (element, aromatic, x, y, z) heavy-atom tuples per MODEL."""
+    models: List[List[tuple]] = []
+    current: Optional[List[tuple]] = None
+    for line in text.splitlines():
+        if line.startswith("MODEL"):
+            current = []
+        elif line.startswith("ENDMDL"):
+            if current is not None:
+                models.append(current)
+            current = None
+        elif line.startswith(("ATOM", "HETATM")) and current is not None:
+            ad_type = line[77:79].strip()
+            element = _AD_TYPE_ELEMENT.get(ad_type, ad_type)
+            if element == "H":
+                continue  # contact/H-bond geometry is heavy-atom based
+            current.append((
+                element, ad_type == "A",
+                float(line[30:38]), float(line[38:46]), float(line[46:54]),
+            ))
+    return models
+
+
+def _attach_docked_coordinates(poses, out_path: str, input_ligand) -> None:
+    """Replace each pose's placeholder ligand with one at its DOCKED
+    coordinates. Without this, pose analysis runs on the undocked input
+    conformer (wherever embedding left it, typically the origin) and
+    reports contacts for a molecule that is nowhere near the pocket."""
+    from ligand import Ligand, LigandAtom
+
+    text = Path(out_path).read_text(encoding="utf-8")
+    models = _read_pdbqt_models(text)
+    if len(models) != len(poses):
+        raise RuntimeError(
+            f"Vina reported {len(poses)} pose(s) but its output PDBQT "
+            f"contains {len(models)} model(s); cannot recover docked "
+            "coordinates."
+        )
+    for pose, atoms in zip(poses, models):
+        pose.ligand = Ligand(
+            name=f"{input_ligand.name}_pose{pose.pose_id}",
+            atoms=[
+                LigandAtom(serial=i + 1, element=el, aromatic=arom,
+                           x=x, y=y, z=z)
+                for i, (el, arom, x, y, z) in enumerate(atoms)
+            ],
+            source_format="docked",
         )
 
 
