@@ -85,6 +85,38 @@ combined confidence, no structure needed):
 python triage.py sequences.fasta --out triage.csv --top 20
 ```
 
+**Risk-controlled gate** (experimental; lets a calibration file choose the
+cutoff instead of `--top`). A hand-picked `--top N` gives no control over how
+many correctly-classifiable enzymes you discard before the expensive
+structural stage. The gate picks the largest `ml_confidence` threshold whose
+Clopper-Pearson lower bound on recall (of sequences the classifier gets
+right) still clears a target. First export calibration pairs, then triage:
+
+```bash
+python -m ml.evaluation --gate-calibration outputs/gate_calib.csv
+python triage.py sequences.fasta --out triage.csv \
+    --gate-calibration outputs/gate_calib.csv --target-recall 0.95 --delta 0.05
+```
+
+Each row gets a `passes_gate` flag and the chosen `gate_threshold`; with a gate
+and no `--top`, only passing rows are written. A valid sequence with no
+`ml_confidence` (model unavailable) is marked `unscored` and kept. If the
+calibration file can't be read, triage exits with an error rather than
+silently running ungated. See `ml/selective_gate.py` and
+`demo_selective_gate.py`.
+
+> **What this does and does not give you.** The Clopper-Pearson guarantee
+> holds for independent, exchangeable calibration and deployment sequences.
+> This toolkit's sequences are clustered homologs, and measured on its own
+> held-out data the guarantee does **not** carry over: fitting the gate for
+> 95% recall (delta 0.05) on half of the held-out *clusters* and deploying on
+> the other half met 95% recall in only 67.5% of 200 random splits (87.0%
+> when the halves were random rows of the same set), versus the 95% promised.
+> It also saves little: at that target the threshold is `ml_confidence`
+> 0.40, which still sends about 90% of sequences to the structural stage.
+> Treat the output as a conservative ranking aid, not a certified miss rate,
+> until the calibration is made cluster-aware.
+
 **Model calibration check** (is the EC classifier's confidence trustworthy?):
 
 ```bash

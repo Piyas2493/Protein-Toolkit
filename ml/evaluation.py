@@ -14,12 +14,18 @@ This reproduces the exact held-out test split used at training time
     - A reliability diagram (predicted confidence vs. empirical
       accuracy per bin), saved as a PNG.
 
+With --gate-calibration it also writes the held-out (ml_confidence,
+correct) pairs to a CSV, which `triage.py` consumes to set a
+risk-controlled gate threshold.
+
 Usage:
     python -m ml.evaluation --model ml/models/enzyme_classifier_xgb.pkl
+    python -m ml.evaluation --gate-calibration outputs/gate_calib.csv
 """
 from __future__ import annotations
 
 import argparse
+import csv
 import sys
 from pathlib import Path
 from typing import List, Tuple
@@ -79,7 +85,21 @@ def brier_score(probabilities: np.ndarray, y_true_idx: np.ndarray,
     return float(np.mean(np.sum((probabilities - one_hot) ** 2, axis=1)))
 
 
-def evaluate(model_path: str, csv_path: str, plot_path: str | None):
+def _write_gate_calibration(path: str, confidences: np.ndarray,
+                             correct: np.ndarray) -> None:
+    """Write the held-out (ml_confidence, correct) pairs that triage.py's
+    risk-controlled gate is fitted on."""
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["ml_confidence", "correct"])
+        for conf, ok in zip(confidences, correct):
+            writer.writerow([f"{float(conf):.6f}", int(round(float(ok)))])
+
+
+def evaluate(model_path: str, csv_path: str, plot_path: str | None,
+             gate_calibration: str | None = None):
     model = ModelLoader.load(model_path)
     X_test, y_test = _held_out_split(Path(csv_path))
 
@@ -113,6 +133,11 @@ def evaluate(model_path: str, csv_path: str, plot_path: str | None):
     if plot_path:
         _plot_reliability(bins, plot_path)
         print(f"\nReliability diagram -> {plot_path}")
+
+    if gate_calibration:
+        _write_gate_calibration(gate_calibration, confidences, correct)
+        print(f"Gate calibration ({len(correct)} held-out pairs) -> "
+              f"{gate_calibration}")
 
     return {"accuracy": accuracy, "brier_score": brier, "ece": ece,
             "bins": bins}
@@ -149,8 +174,13 @@ def main(argv=None) -> int:
     parser.add_argument(
         "--plot", default=str(ROOT / "outputs" / "calibration_reliability.png"),
     )
+    parser.add_argument(
+        "--gate-calibration", default=None,
+        help="Also write held-out (ml_confidence, correct) pairs to this CSV "
+             "for triage.py's risk-controlled gate.",
+    )
     args = parser.parse_args(argv)
-    evaluate(args.model, args.csv, args.plot)
+    evaluate(args.model, args.csv, args.plot, args.gate_calibration)
     return 0
 
 
