@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from core.reliability import docking_notes, format_notes
 from ligand import load_ligand, LigandLoadError, LigandPreparator, LigandValidator
 from docking import ReceptorPreparation, PocketDetector
 from pipeline import dock_ligand_against_receptor
@@ -165,6 +166,9 @@ def main(argv=None) -> int:
 
     print("\nIMPORTANT: docking scores are a computational prediction, "
           "not measured binding affinity.")
+    card = format_notes(docking_notes())
+    if card:
+        print(card)
     return 0
 
 

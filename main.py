@@ -24,6 +24,7 @@ from structure.analyzer import StructureAnalyzer
 from structure.fetch import fetch_pdb, looks_like_pdb_id
 
 # Machine Learning
+from ml.novelty import load_if_built
 from ml.predictor import EnzymePredictor
 
 
@@ -345,6 +346,33 @@ try:
             f"{enzyme_class:10} "
             f"{probability * 100:8.2f}%"
         )
+
+    # Novelty-aware confidence: how close is this sequence to anything the
+    # model was trained on, and what accuracy does that imply?
+    novelty_model = load_if_built()
+
+    if novelty_model is not None:
+
+        top_confidence = max(ml_result["probabilities"].values())
+        nv = novelty_model.assess(seq, top_confidence)
+        tier_acc = novelty_model.tier_stats.get(nv["novelty"], {}).get("accuracy")
+
+        print()
+        print("NOVELTY-AWARE CONFIDENCE")
+        print("-" * 40)
+        print(f"Nearest training family similarity : {nv['nn_similarity']:.4f}"
+              f" ({nv['novelty']})")
+        print(f"Raw model confidence               : {top_confidence:.3f}")
+        print(f"Novelty-adjusted confidence        : {nv['adj_confidence']:.3f}")
+
+        if tier_acc is not None:
+            print(f"On held-out sequences this novel, the model was right "
+                  f"{tier_acc:.0%} of the time.")
+
+    else:
+
+        print()
+        print("(Run `python -m ml.novelty --build` for novelty-aware confidence.)")
 
 except FileNotFoundError as error:
 

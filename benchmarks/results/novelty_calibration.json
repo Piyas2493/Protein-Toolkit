@@ -1,0 +1,41 @@
+{
+  "n_heldout": 15725,
+  "n_training_families": 14642,
+  "accuracy": 0.6605405405405406,
+  "similarity_edges": [
+    0.018469656992084433,
+    0.06257908801979482
+  ],
+  "auc_raw": 0.804430942892236,
+  "auc_adjusted_oof": 0.8126155294775588,
+  "ece_raw": 0.0444680188712331,
+  "ece_adjusted_oof": 0.01878634301929023,
+  "brier_raw": 0.17041519284248352,
+  "brier_adjusted_oof": 0.16478396601563902,
+  "tiers": {
+    "novel": {
+      "n": 3141,
+      "accuracy": 0.4559057624960204,
+      "mean_raw_confidence": 0.6098098754882812,
+      "mean_adj_confidence": 0.4497304175186909,
+      "ece_raw": 0.15390413480554938,
+      "ece_adj": 0.048736581412793675
+    },
+    "related": {
+      "n": 9439,
+      "accuracy": 0.6500688632270367,
+      "mean_raw_confidence": 0.6867737174034119,
+      "mean_adj_confidence": 0.6578031860958184,
+      "ece_raw": 0.037811915751217846,
+      "ece_adj": 0.014989339726369079
+    },
+    "familiar": {
+      "n": 3145,
+      "accuracy": 0.8963434022257551,
+      "mean_raw_confidence": 0.8528599143028259,
+      "mean_adj_confidence": 0.8792700013286407,
+      "ece_raw": 0.04360401373125599,
+      "ece_adj": 0.03787526235516464
+    }
+  }
+}

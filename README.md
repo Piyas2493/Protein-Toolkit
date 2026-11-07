@@ -23,6 +23,33 @@ rigorous than this toolkit's; this toolkit's addition is the sequence-only
 triage front end and the hedged-confidence reporting discipline (see
 Limitations below).
 
+### What is different here
+
+The toolkit does not claim better accuracy than specialised tools (see
+[Validation](#validation); on several tasks it is clearly weaker). What it
+adds is that **it measures and reports its own reliability**, per sequence and
+per output:
+
+- **Novelty-aware confidence.** Every EC prediction also says how close the
+  sequence is to anything the model trained on (`nn_similarity`, a
+  `novel / related / familiar` tier) and gives a recalibrated confidence. On
+  held-out data the same model is 46% accurate on `novel`, 65% on `related`
+  and 90% on `familiar` sequences, while its raw confidence says 0.61, 0.69
+  and 0.85. The recalibration cuts expected calibration error from 0.045 to
+  0.019 overall and from 0.154 to 0.049 for `novel` sequences (out-of-fold).
+  `python -m ml.novelty --check my.fasta` also tells you how much of *your*
+  test set leaks against this model's training data, which inflates any
+  accuracy you measure on it.
+- **Self-reporting outputs.** `screen.py` and `pipeline.py` end with the
+  accuracy the committed benchmarks actually measured for the component they
+  used (pose reproduction, blind site finding, ranking potent vs weak
+  binders), read from `benchmarks/results/` so it cannot drift.
+- **Cluster-aware risk-controlled gate** for deciding which sequences go to
+  the expensive structural stage (see below).
+- **Negative results are committed.** Docking ranking is near chance and
+  blind pocket detection fails on our benchmarks; both are in the repo and
+  the README.
+
 ## Install
 
 ```bash
@@ -85,12 +112,24 @@ combined confidence, no structure needed):
 python triage.py sequences.fasta --out triage.csv --top 20
 ```
 
+Triage output includes `nn_similarity`, `novelty` and `adj_confidence` once the
+novelty model is built (it is derived from the trained classifier and gitignored,
+like the model itself):
+
+```bash
+python -m ml.novelty --build            # once, after (re)training the classifier
+python -m ml.novelty --check my.fasta   # how familiar is this set to the model?
+```
+
 **Risk-controlled gate** (experimental; lets a calibration file choose the
 cutoff instead of `--top`). A hand-picked `--top N` gives no control over how
 many correctly-classifiable enzymes you discard before the expensive
 structural stage. The gate picks the largest `ml_confidence` threshold whose
 Clopper-Pearson lower bound on recall (of sequences the classifier gets
-right) still clears a target. First export calibration pairs, then triage:
+right) still clears a target. Calibration is **cluster-aware**: the exported
+file carries each held-out sequence's homology cluster, and the gate draws one
+random correct prediction per cluster so that the draws are independent
+(homologous sequences are not). First export calibration data, then triage:
 
 ```bash
 python -m ml.evaluation --gate-calibration outputs/gate_calib.csv
@@ -105,17 +144,26 @@ calibration file can't be read, triage exits with an error rather than
 silently running ungated. See `ml/selective_gate.py` and
 `demo_selective_gate.py`.
 
-> **What this does and does not give you.** The Clopper-Pearson guarantee
-> holds for independent, exchangeable calibration and deployment sequences.
-> This toolkit's sequences are clustered homologs, and measured on its own
-> held-out data the guarantee does **not** carry over: fitting the gate for
-> 95% recall (delta 0.05) on half of the held-out *clusters* and deploying on
-> the other half met 95% recall in only 67.5% of 200 random splits (87.0%
-> when the halves were random rows of the same set), versus the 95% promised.
-> It also saves little: at that target the threshold is `ml_confidence`
-> 0.40, which still sends about 90% of sequences to the structural stage.
-> Treat the output as a conservative ranking aid, not a certified miss rate,
-> until the calibration is made cluster-aware.
+> **What this does and does not give you.** The guarantee is on
+> *cluster-averaged* recall: every homologous family counts equally, so large
+> families cannot dominate. It assumes new sequences resemble the calibration
+> clusters; for genuinely novel folds it is not a promise. Measured on the
+> toolkit's own held-out data (`benchmarks/results/gate_coverage.md`: fit on a
+> random 20% or 50% of held-out clusters, deploy on the rest, 200 splits),
+> the cluster-aware gate met the 95% target in 94.5% / 92.5% of splits. The
+> shortfall is about what a finite deployment sample of clusters adds. The
+> earlier row-level gate, which treated homologs as independent, met it in
+> only 15.5% / 1.5% of splits for cluster-averaged recall (75% / 67% for
+> row-weighted recall). The cluster-aware gate kept row-weighted recall at
+> target in 100% of splits, because large families are easier, but that is
+> an observation, not a guarantee.
+>
+> It saves little. At a 95% target the threshold is `ml_confidence` ~0.35 and
+> only about 5% of sequences are skipped: the classifier's confidence does not
+> separate right from wrong predictions sharply enough to prune much. Without
+> a `cluster` column in the calibration file (older exports, or no cluster
+> file), triage warns and falls back to the row-level bound, which is
+> over-confident on homologs.
 
 **Model calibration check** (is the EC classifier's confidence trustworthy?):
 
@@ -145,6 +193,7 @@ Everything below is regenerated by `benchmarks/` and `ml/` (see
 | Screening, CA II (49 vs 49) | AUC 0.49 (0.38-0.61); EF10% 0.7 | chance; a primary-sulfonamide substructure alone scores AUC 0.90. Was 0.58 with the unprotonated receptor |
 | Screening, ER-α (50 vs 50) | AUC 0.60 (0.49-0.70); EF10% 1.6 | at best weakly above chance; interval includes 0.5. Was 0.58 with the unprotonated receptor |
 | EC class, cluster-aware split | 66.0% accuracy, ECE 0.045 | six classes, 15,725 held-out sequences; k-mer-proxy clustering |
+| EC class by novelty tier | 46% novel / 65% related / 90% familiar; novelty-aware recalibration: ECE 0.045 -> 0.019 (out-of-fold) | the confidence the model reports is overconfident on novel sequences; k-mer similarity is a proxy that misses remote homology |
 | EC class, random split (old) | 85.0% accuracy | inflated: 86.6% of its test sequences had a training neighbour |
 
 ## Architecture
@@ -159,7 +208,7 @@ docking/     receptor/ligand prep, pocket detection, AutoDock Vina/GNINA
 ligand/      SMILES/SDF/MOL2/PDB parsing and chemical validation (RDKit if
              available, a dependency-free fallback parser otherwise)
 ml/          EC classifier training (RandomForest + XGBoost), calibration
-             evaluation
+             evaluation, novelty-aware confidence, risk-controlled gate
 pipeline.py  full sequence + structure + docking + evidence-fusion CLI
 main.py      sequence (+ optional structure) analysis CLI
 triage.py    batch sequence-only screening CLI

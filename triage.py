@@ -45,13 +45,14 @@ from core.motifs import MotifDatabase
 from core.catalytic import CatalyticPredictor
 from core.enzymes_classifier import EnzymeClassifier
 from core.scoring import ConfidenceScorer
+from ml.novelty import load_if_built
 from ml.predictor import EnzymePredictor
 
 DEFAULT_ML_MODEL = ROOT / "ml" / "models" / "enzyme_classifier_xgb.pkl"
 
 
 def triage_one(record, motif_db, catalytic_predictor, enzyme_classifier,
-                scorer, ml_predictor):
+                scorer, ml_predictor, novelty=None):
     seq = SequenceValidator.clean(record.sequence)
     validation = SequenceValidator.validate(seq)
     if not validation["valid"]:
@@ -79,7 +80,14 @@ def triage_one(record, motif_db, catalytic_predictor, enzyme_classifier,
         enzyme_predictions=enzyme_predictions, statistics=stats,
     )
 
+    extra = {}
+    if novelty is not None and ml_confidence:
+        nv = novelty.assess(seq, ml_confidence)
+        extra = {"nn_similarity": nv["nn_similarity"], "novelty": nv["novelty"],
+                 "adj_confidence": nv["adj_confidence"]}
+
     return {
+        **extra,
         "header": record.header,
         "length": len(seq),
         "valid": True,
@@ -105,9 +113,15 @@ def run_triage(fasta_path: str, ml_model_path: str | None = DEFAULT_ML_MODEL):
     if ml_model_path and Path(ml_model_path).exists():
         ml_predictor = EnzymePredictor(str(ml_model_path))
 
+    novelty = load_if_built() if ml_predictor is not None else None
+    if ml_predictor is not None and novelty is None:
+        print("Note: no novelty model (python -m ml.novelty --build), so "
+              "nn_similarity / novelty / adj_confidence are left blank.",
+              file=sys.stderr)
+
     rows = [
         triage_one(r, motif_db, catalytic_predictor, enzyme_classifier,
-                   scorer, ml_predictor)
+                   scorer, ml_predictor, novelty)
         for r in records
     ]
     rows.sort(key=lambda r: r.get("triage_score", -1), reverse=True)
@@ -120,24 +134,37 @@ def _fit_gate(calibration_csv: str, target_recall: float, delta: float):
     import numpy as np
     from ml.selective_gate import RiskControlledGate
 
-    scores, correct = [], []
+    scores, correct, clusters = [], [], []
     with open(calibration_csv, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         if reader.fieldnames is None or "ml_confidence" not in reader.fieldnames \
                 or "correct" not in reader.fieldnames:
             raise ValueError(
                 "calibration file needs columns 'ml_confidence' and 'correct'")
+        clustered = "cluster" in reader.fieldnames
         for row in reader:
             try:
-                scores.append(float(row["ml_confidence"]))
-                correct.append(float(row["correct"]) >= 0.5)
+                s, c = float(row["ml_confidence"]), float(row["correct"]) >= 0.5
             except (TypeError, ValueError):
                 continue
+            if clustered and not row["cluster"]:
+                continue
+            scores.append(s)
+            correct.append(c)
+            clusters.append(row["cluster"] if clustered else None)
     if not scores:
         raise ValueError("no usable rows in calibration file")
 
+    if not clustered:
+        print("Warning: the calibration file has no 'cluster' column, so rows are "
+              "treated as independent. For homologous sequences that makes the "
+              "guarantee over-confident; re-export with `python -m "
+              "ml.evaluation --gate-calibration` after running "
+              "`python -m ml.training.cluster_sequences`.", file=sys.stderr)
+
     gate = RiskControlledGate(target_recall=target_recall, delta=delta)
-    gate.fit(np.asarray(scores), np.asarray(correct, dtype=bool))
+    gate.fit(np.asarray(scores), np.asarray(correct, dtype=bool),
+             groups=np.asarray(clusters) if clustered else None)
     return gate
 
 
@@ -210,6 +237,7 @@ def main(argv=None) -> int:
 
     fieldnames = ["header", "length", "valid", "motifs", "catalytic_hits",
                   "rule_enzyme_class", "ml_enzyme_class", "ml_confidence",
+                  "nn_similarity", "novelty", "adj_confidence",
                   "triage_score", "passes_gate", "gate_threshold", "error"]
     with open(args.out, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)

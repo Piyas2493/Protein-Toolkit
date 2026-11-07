@@ -15,16 +15,27 @@ confidence guarantee. The threshold is the largest score whose Clopper-Pearson
 lower confidence bound on recall still clears the target; a larger threshold
 would send fewer sequences on (cheaper) but risk dropping too many true ones.
 
-Guarantee: if the calibration labels are exchangeable with the sequences the
-gate will later see, then with probability at least 1 - delta the gate keeps
-at least `target_recall` of the positive class. Nothing here assumes the
-score is a calibrated probability; it only assumes the scores can be ranked.
+Guarantee: if the calibration units are exchangeable with the units the gate
+will later see, then with probability at least 1 - delta the gate keeps at
+least `target_recall` of the positive class. Nothing here assumes the score is
+a calibrated probability; it only assumes the scores can be ranked.
 
-Caveat: clustered data (homologous protein sequences) is NOT exchangeable at
-the row level. On this toolkit's EC classifier, calibrating on half the
-held-out clusters and deploying on the other half met a 95% recall target in
-only 67.5% of random splits, not the promised 95%. Use the bound only when
-calibration and deployment sequences are genuinely exchangeable.
+What counts as a "unit" depends on `groups`:
+
+* No `groups`: every positive row is a unit. Fine for independent rows, but
+  homologous protein sequences are not independent, and the bound is then
+  over-confident. On this toolkit's EC classifier, calibrating on half the
+  held-out clusters and deploying on the other half met a 95% row-weighted
+  recall target in only 67% of random splits (1.5% for cluster-averaged
+  recall); see benchmarks/gate_coverage.py.
+* With `groups` (one cluster label per row): ONE positive is drawn uniformly
+  at random from each cluster and only those draws are used. They are
+  independent draws, so the same exact bound applies with the cluster as the
+  unit and no asymptotic approximation is needed. The price is a change of
+  estimand: the guarantee is on CLUSTER-AVERAGED recall (every homologous
+  family counts equally, so large families cannot dominate) and information
+  from the other cluster members is discarded. Row-weighted recall on a new
+  batch can be higher or lower than that.
 
 Dependencies: numpy. SciPy is used for an exact Clopper-Pearson bound when
 present, with a conservative closed-form fallback otherwise.
@@ -95,25 +106,55 @@ def _one_sided_z(delta: float) -> float:
                   ((((d[0]*t+d[1])*t+d[2])*t+d[3])*t+1))
 
 
+def _largest_certified_threshold(units: np.ndarray, target: float, delta: float):
+    """(tau, lower_bound, n_kept) for the largest tau whose Clopper-Pearson
+    lower bound on recall clears `target`, or None if none (not even tau = 0)
+    does. `units` are the scores of the independent positive draws."""
+    n = units.size
+    srt = np.sort(units)
+    # Candidate thresholds: each distinct positive score, plus 0 (keep all).
+    cands = np.concatenate(([0.0], np.unique(srt)))
+    kept = n - np.searchsorted(srt, cands, side="left")       # units >= tau
+    # Raising tau only lowers `kept`, and the bound only falls with it, so the
+    # feasible thresholds form a prefix: bisect for its end (the LARGEST tau,
+    # i.e. the fewest sequences sent on).
+    if _clopper_pearson_lower(int(kept[0]), n, delta) < target:
+        return None
+    lo, hi = 0, cands.size - 1
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if _clopper_pearson_lower(int(kept[mid]), n, delta) >= target:
+            lo = mid
+        else:
+            hi = mid - 1
+    return (float(cands[lo]), _clopper_pearson_lower(int(kept[lo]), n, delta),
+            int(kept[lo]))
+
+
 @dataclass
 class GateReport:
     threshold: float
     target_recall: float
     delta: float
     guaranteed_recall: float   # Clopper-Pearson lower bound at the chosen threshold
-    point_recall: float        # empirical recall on the calibration positives
+    point_recall: float        # empirical recall over the calibration units
     kept_fraction: float       # share of all calibration sequences sent onward
-    n_positive: int
+    n_positive: int            # positive calibration rows
     feasible: bool             # False => target could not be guaranteed; gate keeps all
+    n_units: int = 0           # independent units behind the bound (rows or clusters)
+    clustered: bool = False    # True => one random positive per cluster was used
 
     def summary(self) -> str:
+        unit = (f"{self.n_units} clusters, cluster-averaged recall"
+                if self.clustered else f"{self.n_units} rows assumed independent")
         if not self.feasible:
             return (f"Gate could not guarantee {self.target_recall:.0%} recall at "
-                    f"delta={self.delta}; keeping all sequences (threshold 0).")
+                    f"delta={self.delta} from {unit}; keeping all sequences "
+                    "(threshold 0).")
         return (f"threshold={self.threshold:.4f} | guaranteed recall "
                 f">= {self.guaranteed_recall:.3f} (target {self.target_recall:.2f}, "
                 f"delta={self.delta}) | sends {self.kept_fraction:.1%} of sequences "
-                f"to the structural stage")
+                f"to the structural stage | {unit}")
 
 
 class RiskControlledGate:
@@ -122,21 +163,30 @@ class RiskControlledGate:
 
     Typical use:
         gate = RiskControlledGate(target_recall=0.95, delta=0.05)
-        gate.fit(cal_scores, cal_is_true_enzyme)
+        gate.fit(cal_scores, cal_is_true_enzyme)                  # independent rows
+        gate.fit(cal_scores, cal_is_true_enzyme, groups=cluster)  # clustered rows
         keep = gate.transform(new_scores)     # boolean mask
+
+    Pass `groups` (one cluster label per row) whenever rows are not
+    independent, e.g. homologous protein sequences; see the module docstring
+    for what that changes. `seed` fixes which positive is drawn per cluster, so
+    a fit is reproducible.
     """
 
-    def __init__(self, target_recall: float = 0.95, delta: float = 0.05):
+    def __init__(self, target_recall: float = 0.95, delta: float = 0.05,
+                 seed: int = 0):
         if not 0 < target_recall < 1:
             raise ValueError("target_recall must be in (0, 1)")
         if not 0 < delta < 1:
             raise ValueError("delta must be in (0, 1)")
         self.target_recall = target_recall
         self.delta = delta
+        self.seed = seed
         self.threshold_: Optional[float] = None
         self.report_: Optional[GateReport] = None
 
-    def fit(self, scores: np.ndarray, positive: np.ndarray) -> "RiskControlledGate":
+    def fit(self, scores: np.ndarray, positive: np.ndarray,
+            groups: Optional[np.ndarray] = None) -> "RiskControlledGate":
         scores = np.asarray(scores, dtype=float)
         positive = np.asarray(positive, dtype=bool)
         if scores.shape != positive.shape:
@@ -146,31 +196,38 @@ class RiskControlledGate:
         if n == 0:
             raise ValueError("no positive calibration examples")
 
-        # Candidate thresholds: each distinct positive score, plus 0 (keep all).
-        candidates = np.concatenate(([0.0], np.unique(pos)))
-        best = None
-        for tau in candidates:
-            kept = int(np.sum(pos >= tau))
-            lcb = _clopper_pearson_lower(kept, n, self.delta)
-            if lcb >= self.target_recall:
-                # feasible; prefer the LARGEST such tau (fewest sequences sent on)
-                if best is None or tau > best[0]:
-                    best = (tau, lcb, kept)
+        units = pos
+        if groups is not None:
+            groups = np.asarray(groups)
+            if groups.shape != scores.shape:
+                raise ValueError("groups must have the same shape as scores")
+            # One uniformly random positive per cluster: shuffle, then keep the
+            # first row of each cluster. The draws are independent across
+            # clusters, so the bound below is exact with the cluster as the unit.
+            shuffled = np.random.default_rng(self.seed).permutation(
+                np.flatnonzero(positive))
+            _, first = np.unique(groups[shuffled], return_index=True)
+            units = scores[shuffled[first]]
 
+        best = _largest_certified_threshold(units, self.target_recall, self.delta)
+        common = dict(target_recall=self.target_recall, delta=self.delta,
+                      n_positive=n, n_units=int(units.size),
+                      clustered=groups is not None)
         if best is None:
             self.threshold_ = 0.0
             self.report_ = GateReport(
-                threshold=0.0, target_recall=self.target_recall, delta=self.delta,
-                guaranteed_recall=_clopper_pearson_lower(n, n, self.delta),
-                point_recall=1.0, kept_fraction=1.0, n_positive=n, feasible=False)
+                threshold=0.0,
+                guaranteed_recall=_clopper_pearson_lower(units.size, units.size,
+                                                         self.delta),
+                point_recall=1.0, kept_fraction=1.0, feasible=False, **common)
             return self
 
         tau, lcb, kept = best
         self.threshold_ = float(tau)
         self.report_ = GateReport(
-            threshold=float(tau), target_recall=self.target_recall, delta=self.delta,
-            guaranteed_recall=float(lcb), point_recall=kept / n,
-            kept_fraction=float(np.mean(scores >= tau)), n_positive=n, feasible=True)
+            threshold=float(tau), guaranteed_recall=float(lcb),
+            point_recall=kept / units.size,
+            kept_fraction=float(np.mean(scores >= tau)), feasible=True, **common)
         return self
 
     def transform(self, scores: np.ndarray) -> np.ndarray:
@@ -178,18 +235,30 @@ class RiskControlledGate:
             raise RuntimeError("call fit() before transform()")
         return np.asarray(scores, dtype=float) >= self.threshold_
 
-    def evaluate(self, scores: np.ndarray, positive: np.ndarray) -> dict:
+    def evaluate(self, scores: np.ndarray, positive: np.ndarray,
+                 groups: Optional[np.ndarray] = None) -> dict:
         """Realized recall and compute saving on a held-out set the gate did
-        not see during fit(), for honest reporting."""
+        not see during fit(), for honest reporting. With `groups` it also
+        reports cluster-averaged recall, the quantity a clustered fit bounds."""
         scores = np.asarray(scores, dtype=float)
         positive = np.asarray(positive, dtype=bool)
         keep = self.transform(scores)
         pos = positive.sum()
         recall = float(np.sum(keep & positive) / pos) if pos else float("nan")
-        return {
+        out = {
             "realized_recall": recall,
             "kept_fraction": float(np.mean(keep)),
             "compute_saving": float(1.0 - np.mean(keep)),
             "target_recall": self.target_recall,
-            "guarantee_held": bool(recall >= self.target_recall) if pos else None,
         }
+        if groups is not None and pos:
+            g = np.asarray(groups)[positive]
+            _, inv = np.unique(g, return_inverse=True)
+            per_cluster = (np.bincount(inv, weights=keep[positive].astype(float))
+                           / np.bincount(inv))
+            out["realized_cluster_recall"] = float(per_cluster.mean())
+            target_stat = out["realized_cluster_recall"]
+        else:
+            target_stat = recall
+        out["guarantee_held"] = bool(target_stat >= self.target_recall) if pos else None
+        return out

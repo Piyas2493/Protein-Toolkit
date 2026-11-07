@@ -80,3 +80,41 @@ proxy for CD-HIT/MMseqs2 clustering and will not catch remote homologs at
 
 `enzyme_clusters.csv` is gitignored (regenerable, 1.8 MB). Without it the
 trainers fall back to a random split and warn — that number is inflated.
+
+## 4. Triage gate coverage — does the recall guarantee hold on unseen clusters?
+
+```bash
+python -m ml.evaluation --gate-calibration outputs/gate_calib.csv   # needs the cluster file (section 3)
+python -m benchmarks.gate_coverage
+```
+
+Splits the EC classifier's held-out rows by cluster into a calibration part
+(20% or 50% of clusters) and a deployment part, fits the triage gate on the
+former, and checks its realized recall on the latter over 200 random splits.
+Compares the row-level gate (rows treated as independent) with the
+cluster-aware gate (one random correct prediction per cluster) and reports
+both cluster-averaged and row-weighted recall. A valid 95% gate should hold in
+at least 95% of splits for the recall it bounds (cluster-averaged, for the
+cluster-aware gate). Output: `results/gate_coverage.{json,md}`.
+
+The deployment part is a finite sample of clusters, so its recall scatters
+around the population value; the measured coverage includes that noise.
+
+## 5. Novelty-aware confidence — does similarity to the training data predict accuracy?
+
+```bash
+python -m ml.novelty --build     # needs the trained model, features and cluster file (section 3)
+```
+
+For each held-out sequence (none shares a cluster with training) it measures
+the 5-mer overlap with the nearest training family, then fits a 3-parameter
+logistic on (model confidence, log similarity) to predict whether the
+prediction is right. Quality is reported out-of-fold, grouped by sequence
+cluster, in `results/novelty_calibration.{json,md}`: calibration error, Brier
+score and AUC with and without the adjustment, and accuracy per novelty tier.
+
+What it does not show: the held-out set only spans the similarity range it
+spans (extrapolating to similarity ~0 or ~1 is unvalidated), similarity is a
+k-mer proxy that misses remote homology, and the fit describes this one model
+and must be rebuilt whenever the classifier is retrained.
+

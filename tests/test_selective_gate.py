@@ -73,3 +73,87 @@ def test_triage_fails_closed_on_unreadable_calibration(tmp_path):
     rc = triage.main([str(fasta), "--out", str(out), "--no-ml",
                       "--gate-calibration", str(tmp_path / "missing.csv")])
     assert rc == 2 and not out.exists()
+
+
+# ---- cluster-aware calibration -------------------------------------------
+
+def _clustered(rng, n_clusters):
+    """Heavy-tailed cluster sizes; scores within a cluster share a random
+    effect, so rows are strongly correlated (like homologous sequences)."""
+    sizes = 1 + np.floor(rng.lognormal(0.0, 1.3, n_clusters)).astype(int)
+    cid = np.repeat(np.arange(n_clusters), sizes)
+    mu = rng.normal(0, 0.8, n_clusters)[cid]
+    score = 1 / (1 + np.exp(-(1.2 + mu + rng.normal(0, 0.6, cid.size))))
+    return score, cid
+
+
+def test_cluster_gate_covers_cluster_averaged_recall_row_gate_does_not():
+    """With correlated rows the row-level bound undercovers; fitting with
+    cluster ids restores the promised coverage of cluster-averaged recall."""
+    target, delta = 0.95, 0.05
+    pop, pcid = _clustered(np.random.default_rng(12345), 20000)
+    sizes = np.bincount(pcid)
+
+    def cluster_recall(tau):
+        return float(np.mean(np.bincount(pcid, weights=(pop >= tau)) / sizes))
+
+    rng = np.random.default_rng(0)
+    hit_cluster, hit_row = [], []
+    for r in range(150):
+        s, cid = _clustered(rng, 150)
+        ones = np.ones(s.size, bool)
+        gc = RiskControlledGate(target, delta, seed=r).fit(s, ones, groups=cid)
+        gr = RiskControlledGate(target, delta).fit(s, ones)
+        hit_cluster.append(cluster_recall(gc.threshold_) >= target)
+        hit_row.append(cluster_recall(gr.threshold_) >= target)
+    assert np.mean(hit_cluster) >= 1 - delta - 0.05
+    assert np.mean(hit_row) < np.mean(hit_cluster) - 0.1
+
+
+def test_groups_use_one_unit_per_cluster_and_are_reproducible():
+    s, cid = _clustered(np.random.default_rng(1), 80)
+    ones = np.ones(s.size, bool)
+    a = RiskControlledGate(0.9, 0.1, seed=3).fit(s, ones, groups=cid)
+    b = RiskControlledGate(0.9, 0.1, seed=3).fit(s, ones, groups=cid)
+    assert a.threshold_ == b.threshold_
+    assert a.report_.clustered and a.report_.n_units == 80
+    assert a.report_.n_positive == s.size
+    assert "80 clusters" in a.report_.summary()
+    with pytest.raises(ValueError):
+        RiskControlledGate().fit(s, ones, groups=cid[:-1])
+
+
+def test_too_few_clusters_cannot_be_certified_and_keeps_everything():
+    s, cid = _clustered(np.random.default_rng(2), 20)   # 20 units < ~58 needed
+    gate = RiskControlledGate(0.95, 0.05).fit(s, np.ones(s.size, bool), groups=cid)
+    assert gate.report_.feasible is False and gate.threshold_ == 0.0
+    assert gate.transform(s).all()
+
+
+def test_evaluate_reports_cluster_averaged_recall():
+    scores = np.array([0.9, 0.9, 0.9, 0.1])     # cluster A: 3 kept, cluster B: 0 kept
+    positive = np.ones(4, bool)
+    gate = RiskControlledGate(0.5, 0.5)
+    gate.threshold_ = 0.5
+    res = gate.evaluate(scores, positive, groups=np.array(["A", "A", "A", "B"]))
+    assert res["realized_recall"] == 0.75
+    assert res["realized_cluster_recall"] == 0.5
+    assert res["guarantee_held"] is True    # judged on cluster recall: 0.5 >= 0.5
+
+
+def test_calibration_export_carries_clusters_and_triage_uses_them(tmp_path, capsys):
+    import triage
+    from ml.evaluation import _write_gate_calibration
+
+    s, cid = _clustered(np.random.default_rng(4), 120)
+    ok = np.random.default_rng(4).random(s.size) < 0.7
+    path = tmp_path / "cal.csv"
+    _write_gate_calibration(str(path), s, ok.astype(float), cid)
+    gate = triage._fit_gate(str(path), 0.9, 0.1)
+    assert gate.report_.clustered and gate.report_.n_units <= 120
+
+    plain = tmp_path / "plain.csv"
+    _write_gate_calibration(str(plain), s, ok.astype(float))
+    gate2 = triage._fit_gate(str(plain), 0.9, 0.1)
+    assert not gate2.report_.clustered
+    assert "no 'cluster' column" in capsys.readouterr().err

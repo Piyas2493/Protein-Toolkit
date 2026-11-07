@@ -45,8 +45,10 @@ def _held_out_split(csv_path: Path):
     df = pd.read_csv(csv_path)
     feature_cols = [c for c in df.columns if c not in ("ID", "Label")]
     X = df[feature_cols].astype(np.float32)
-    _, test_idx, _ = held_out_split(df)
-    return X.iloc[test_idx], df["Label"].iloc[test_idx]
+    _, test_idx, groups = held_out_split(df)
+    clusters = None if groups is None else groups[test_idx]
+    return (X.iloc[test_idx], df["Label"].iloc[test_idx], clusters,
+            df["ID"].iloc[test_idx].to_numpy())
 
 
 def calibration_bins(
@@ -86,22 +88,25 @@ def brier_score(probabilities: np.ndarray, y_true_idx: np.ndarray,
 
 
 def _write_gate_calibration(path: str, confidences: np.ndarray,
-                             correct: np.ndarray) -> None:
-    """Write the held-out (ml_confidence, correct) pairs that triage.py's
-    risk-controlled gate is fitted on."""
+                             correct: np.ndarray, clusters=None) -> None:
+    """Write the held-out (ml_confidence, correct[, cluster]) rows that
+    triage.py's risk-controlled gate is fitted on. The cluster column lets the
+    gate treat homologous sequences as one unit instead of independent rows."""
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["ml_confidence", "correct"])
-        for conf, ok in zip(confidences, correct):
-            writer.writerow([f"{float(conf):.6f}", int(round(float(ok)))])
+        writer.writerow(["ml_confidence", "correct"]
+                        + ([] if clusters is None else ["cluster"]))
+        for i, (conf, ok) in enumerate(zip(confidences, correct)):
+            row = [f"{float(conf):.6f}", int(round(float(ok)))]
+            writer.writerow(row if clusters is None else row + [clusters[i]])
 
 
 def evaluate(model_path: str, csv_path: str, plot_path: str | None,
              gate_calibration: str | None = None):
     model = ModelLoader.load(model_path)
-    X_test, y_test = _held_out_split(Path(csv_path))
+    X_test, y_test, clusters, _ = _held_out_split(Path(csv_path))
 
     if hasattr(model, "feature_names_in_"):
         X_test = X_test.reindex(columns=model.feature_names_in_)
@@ -135,9 +140,14 @@ def evaluate(model_path: str, csv_path: str, plot_path: str | None,
         print(f"\nReliability diagram -> {plot_path}")
 
     if gate_calibration:
-        _write_gate_calibration(gate_calibration, confidences, correct)
-        print(f"Gate calibration ({len(correct)} held-out pairs) -> "
+        _write_gate_calibration(gate_calibration, confidences, correct, clusters)
+        print(f"Gate calibration ({len(correct)} held-out rows, "
+              f"{'with' if clusters is not None else 'WITHOUT'} cluster ids) -> "
               f"{gate_calibration}")
+        if clusters is None:
+            print("  No sequence-cluster file covers this dataset, so the gate "
+                  "will treat rows as independent; run "
+                  "`python -m ml.training.cluster_sequences` first.")
 
     return {"accuracy": accuracy, "brier_score": brier, "ece": ece,
             "bins": bins}

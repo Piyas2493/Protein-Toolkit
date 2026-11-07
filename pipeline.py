@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from core.reliability import docking_notes, format_notes
 from ligand import (
     load_ligand,
     LigandLoadError,
@@ -395,6 +396,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     print()
     print("IMPORTANT: This is a computational prediction and does not")
     print("establish experimental binding or biological activity.")
+    card = format_notes(docking_notes())
+    if card:
+        print()
+        print(card)
 
     if args.json:
         Path(args.json).write_text(

@@ -61,6 +61,12 @@ single stage.
   ligand, heuristic pose analysis (contacts, hydrogen bonds, metal
   coordination, clashes) producing an inspectable STRONG/MODERATE/WEAK label,
   and library screening that prepares the receptor and pockets once.
+- **Reliability reporting** (`ml/novelty.py`, `core/reliability.py`,
+  `ml/selective_gate.py`): each EC prediction carries its similarity to the
+  nearest training family, a novelty tier and a recalibrated confidence;
+  docking and screening outputs quote the accuracy the committed benchmarks
+  measured for them; and an optional triage gate chooses its cutoff from
+  cluster-aware calibration data.
 
 # Validation
 
@@ -137,6 +143,22 @@ sequences without one. With cluster-aware splitting the model reaches
 mild overconfidence. The grouping is a k-mer proxy for CD-HIT
 [@li2006cdhit] or MMseqs2 [@steinegger2017mmseqs2] and will not catch remote
 homologs, so 66% is still likely optimistic for truly novel folds.
+
+**Novelty-aware confidence.** The held-out sequences still differ in how close
+they are to the training data, and accuracy follows that closely. Splitting
+them by 5-mer similarity to the nearest training family, the model is right
+46% of the time on the most novel fifth, 65% on the middle three fifths and
+90% on the most familiar fifth, while its own confidence averages 0.61, 0.69
+and 0.85: it is overconfident exactly where the input is unfamiliar. A
+three-parameter logistic recalibration on (confidence, log similarity) lowers
+expected calibration error from 0.045 to 0.019 overall and from 0.154 to
+0.049 on the novel fifth, evaluated out-of-fold with folds grouped by
+sequence cluster; the Brier score improves from 0.170 to 0.165 and the ROC
+AUC for "this prediction is correct" from 0.804 to 0.813. These gains are
+modest in discrimination and real in calibration. The held-out set spans
+only a limited similarity range, so the adjustment is unvalidated outside
+it, and the similarity measure is a k-mer proxy that misses remote
+homology.
 
 # Limitations
 
