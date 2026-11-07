@@ -47,10 +47,18 @@ if str(ROOT) not in sys.path:
 
 from ml.training.cluster_sequences import kmers
 
-ARTIFACT = ROOT / "ml" / "models" / "novelty.pkl"
+ARTIFACT = ROOT / "ml" / "models" / "novelty.pkl"        # the default XGBoost model's
+DEFAULT_MODEL = ROOT / "ml" / "models" / "enzyme_classifier_xgb.pkl"
 RESULTS_DIR = ROOT / "benchmarks" / "results"
 FLOOR = 1e-3        # added before log() so similarity 0 stays finite
 TIERS = ("novel", "related", "familiar")
+
+
+def artifact_for(model_path) -> Path:
+    """Where the novelty model for a given classifier lives: the legacy
+    novelty.pkl for the default XGBoost model, novelty_<model>.pkl otherwise."""
+    stem = Path(model_path).stem
+    return ARTIFACT if stem == DEFAULT_MODEL.stem else ARTIFACT.with_name(f"novelty_{stem}.pkl")
 
 
 def _logit(p: float) -> float:
@@ -82,12 +90,15 @@ class NoveltyIndex:
 
 class NoveltyModel:
     def __init__(self, founders: Dict[str, str], coef, intercept: float,
-                 edges, tier_stats=None):
+                 edges, tier_stats=None, model_name="enzyme_classifier_xgb.pkl"):
         self.founders = founders
         self.coef = [float(c) for c in coef]
         self.intercept = float(intercept)
         self.edges = [float(e) for e in edges]       # novel < edges[0] <= related < edges[1] <= familiar
         self.tier_stats = tier_stats or {}
+        # The recalibration describes ONE classifier's confidence; applying it to
+        # another model's scores would be wrong, so remember which this is for.
+        self.model_name = model_name
         self.index = NoveltyIndex(founders)
 
     def tier(self, similarity: float) -> str:
@@ -111,14 +122,22 @@ class NoveltyModel:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         joblib.dump({"founders": self.founders, "coef": self.coef,
                      "intercept": self.intercept, "edges": self.edges,
-                     "tier_stats": self.tier_stats}, str(path))
+                     "tier_stats": self.tier_stats, "model_name": self.model_name}, str(path))
 
     @classmethod
     def load(cls, path: Path = ARTIFACT) -> "NoveltyModel":
         import joblib
         d = joblib.load(str(path))
         return cls(d["founders"], d["coef"], d["intercept"], d["edges"],
-                   d.get("tier_stats"))
+                   d.get("tier_stats"), d.get("model_name", "enzyme_classifier_xgb.pkl"))
+
+
+def load_for_model(model_path, path: Optional[Path] = None) -> Optional[NoveltyModel]:
+    """The built novelty model, but only if it was built for this classifier."""
+    nv = load_if_built(path or artifact_for(model_path))
+    if nv is not None and nv.model_name != Path(model_path).name:
+        return None
+    return nv
 
 
 def load_if_built(path: Path = ARTIFACT) -> Optional[NoveltyModel]:
@@ -145,7 +164,8 @@ def _ece(p: np.ndarray, correct: np.ndarray) -> float:
 
 
 def build(features_csv: Path, sequences_csv: Path, model_path: Path,
-          out: Path = ARTIFACT, results_dir: Path = RESULTS_DIR) -> dict:
+          out: Optional[Path] = None, results_dir: Path = RESULTS_DIR,
+          shards: Optional[Path] = None) -> dict:
     import pandas as pd
     from sklearn.metrics import roc_auc_score
     from sklearn.model_selection import GroupKFold
@@ -164,9 +184,14 @@ def build(features_csv: Path, sequences_csv: Path, model_path: Path,
 
     X_test, y_test, clusters, test_ids = _held_out_split(features_csv)
     model = ModelLoader.load(str(model_path))
-    if hasattr(model, "feature_names_in_"):
-        X_test = X_test.reindex(columns=model.feature_names_in_)
-    proba = model.predict_proba(X_test)
+    if getattr(model, "needs_sequence_embedding", False):      # embedding-based classifier
+        from ml.training.train_plm_classifier import load_embeddings
+        proba = model.predict_proba_embeddings(load_embeddings(
+            shards or ROOT / "ml" / "training" / "esm1b_shards", np.asarray(test_ids)))
+    else:
+        if hasattr(model, "feature_names_in_"):
+            X_test = X_test.reindex(columns=model.feature_names_in_)
+        proba = model.predict_proba(X_test)
     classes = list(model.classes_)
     pred = proba.argmax(axis=1)
     conf = proba[np.arange(len(pred)), pred]
@@ -194,6 +219,7 @@ def build(features_csv: Path, sequences_csv: Path, model_path: Path,
                          "ece_raw": _ece(conf[m], correct[m]),
                          "ece_adj": _ece(oof[m], correct[m])}
     summary = {
+        "model": Path(model_path).name,
         "n_heldout": int(len(conf)), "n_training_families": len(founders),
         "accuracy": float(correct.mean()),
         "similarity_edges": [float(e) for e in edges],
@@ -205,10 +231,12 @@ def build(features_csv: Path, sequences_csv: Path, model_path: Path,
         "tiers": tier_stats,
     }
 
-    NoveltyModel(founders, coef, intercept, edges, tier_stats).save(out)
+    NoveltyModel(founders, coef, intercept, edges, tier_stats,
+                 Path(model_path).name).save(out or artifact_for(model_path))
+    suffix = "" if Path(model_path).stem == DEFAULT_MODEL.stem else f"_{Path(model_path).stem}"
     results_dir.mkdir(parents=True, exist_ok=True)
-    (results_dir / "novelty_calibration.json").write_text(json.dumps(summary, indent=2))
-    (results_dir / "novelty_calibration.md").write_text(_markdown(summary), encoding="utf-8")
+    (results_dir / f"novelty_calibration{suffix}.json").write_text(json.dumps(summary, indent=2))
+    (results_dir / f"novelty_calibration{suffix}.md").write_text(_markdown(summary), encoding="utf-8")
     return summary
 
 
@@ -217,7 +245,7 @@ def _markdown(s: dict) -> str:
         f"| {t} | {v['n']} | {v['accuracy']:.1%} | {v['mean_raw_confidence']:.2f} | "
         f"{v['mean_adj_confidence']:.2f} | {v['ece_raw']:.3f} | {v['ece_adj']:.3f} |"
         for t, v in s["tiers"].items())
-    return f"""# Novelty-aware confidence (EC classifier)
+    return f"""# Novelty-aware confidence (EC classifier: {s.get('model', 'enzyme_classifier_xgb.pkl')})
 
 {s['n_heldout']} held-out sequences (no cluster shared with training), compared with
 {s['n_training_families']} training families. Tiers split held-out sequences by similarity
@@ -261,18 +289,20 @@ def main(argv=None) -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--build", action="store_true")
     parser.add_argument("--check", metavar="FASTA")
-    parser.add_argument("--model", default=str(ROOT / "ml" / "models" / "enzyme_classifier_xgb.pkl"))
-    parser.add_argument("--artifact", default=str(ARTIFACT))
+    parser.add_argument("--model", default=str(DEFAULT_MODEL))
+    parser.add_argument("--artifact", default=None,
+                        help="default: the novelty model that belongs to --model")
     args = parser.parse_args(argv)
+    artifact = Path(args.artifact) if args.artifact else artifact_for(args.model)
 
     if args.build:
         s = build(ROOT / "ml" / "training" / "enzyme_features.csv",
                   ROOT / "ml" / "training" / "enzyme_sequences.csv",
-                  Path(args.model), Path(args.artifact))
+                  Path(args.model), artifact)
         print(_markdown(s))
         return 0
     if args.check:
-        model = load_if_built(Path(args.artifact))
+        model = load_if_built(artifact)
         if model is None:
             print("No novelty model: run `python -m ml.novelty --build` first.",
                   file=sys.stderr)
@@ -288,9 +318,13 @@ def main(argv=None) -> int:
             print(f"{t:9}: {out['counts'][t]:5d} ({out['counts'][t] / n:.0%})   "
                   f"model accuracy on held-out {t} sequences: {acc}")
         if out["counts"]["familiar"] / n > 0.5:
+            tiers = model.tier_stats
+            tot = sum(v["n"] for v in tiers.values()) or 1
+            overall = sum(v["n"] * v["accuracy"] for v in tiers.values()) / tot
             print("\nMost of these sequences have a close relative in this model's "
                   "training data, so accuracy measured on them will be inflated "
-                  "relative to genuinely new families (66% on the cluster-held-out set).")
+                  f"relative to genuinely new families ({overall:.0%} on the "
+                  "cluster-held-out set).")
         return 0
     parser.print_help()
     return 2

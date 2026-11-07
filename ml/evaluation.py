@@ -106,12 +106,18 @@ def _write_gate_calibration(path: str, confidences: np.ndarray,
 def evaluate(model_path: str, csv_path: str, plot_path: str | None,
              gate_calibration: str | None = None):
     model = ModelLoader.load(model_path)
-    X_test, y_test, clusters, _ = _held_out_split(Path(csv_path))
+    X_test, y_test, clusters, test_ids = _held_out_split(Path(csv_path))
 
-    if hasattr(model, "feature_names_in_"):
-        X_test = X_test.reindex(columns=model.feature_names_in_)
-
-    probabilities = model.predict_proba(X_test)
+    if getattr(model, "needs_sequence_embedding", False):
+        # embedding-based classifier (ml/plm_classifier.py): use the precomputed
+        # ESM-1b embeddings of the held-out sequences
+        from ml.training.train_plm_classifier import load_embeddings
+        probabilities = model.predict_proba_embeddings(load_embeddings(
+            ROOT / "ml" / "training" / "esm1b_shards", np.asarray(test_ids)))
+    else:
+        if hasattr(model, "feature_names_in_"):
+            X_test = X_test.reindex(columns=model.feature_names_in_)
+        probabilities = model.predict_proba(X_test)
     classes = list(model.classes_)
     class_index = {c: i for i, c in enumerate(classes)}
     y_true_idx = y_test.map(class_index).to_numpy()

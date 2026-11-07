@@ -81,3 +81,21 @@ def test_reliability_notes_read_numbers_from_the_result_files(tmp_path, monkeypa
             "familiar": {"accuracy": 0.90}}}))
     text = reliability.format_notes(reliability.docking_notes() + reliability.ec_notes())
     assert "1CA2 ROC AUC 0.49" in text and "46% for novel" in text
+
+
+def test_novelty_model_is_per_classifier(tmp_path, monkeypatch):
+    from ml import novelty
+
+    assert novelty.artifact_for("x/enzyme_classifier_xgb.pkl") == novelty.ARTIFACT
+    plm = novelty.artifact_for("x/enzyme_classifier_plm.pkl")
+    assert plm.name == "novelty_enzyme_classifier_plm.pkl"
+
+    monkeypatch.setattr(novelty, "ARTIFACT", tmp_path / "novelty.pkl")
+    m = _model()
+    m.model_name = "enzyme_classifier_xgb.pkl"
+    m.save(novelty.ARTIFACT)
+    assert novelty.load_for_model("x/enzyme_classifier_xgb.pkl") is not None
+    # a novelty model fitted to one classifier's confidences must not be applied to another's
+    m.model_name = "enzyme_classifier_plm.pkl"
+    m.save(novelty.ARTIFACT)
+    assert novelty.load_for_model("x/enzyme_classifier_xgb.pkl") is None

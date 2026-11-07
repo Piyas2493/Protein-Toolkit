@@ -1,0 +1,42 @@
+{
+  "model": "enzyme_classifier_plm.pkl",
+  "n_heldout": 15725,
+  "n_training_families": 14642,
+  "accuracy": 0.9236248012718601,
+  "similarity_edges": [
+    0.018469656992084433,
+    0.06257908801979482
+  ],
+  "auc_raw": 0.9216076305181283,
+  "auc_adjusted_oof": 0.9167514173330725,
+  "ece_raw": 0.009645207297820937,
+  "ece_adjusted_oof": 0.009837293832365366,
+  "brier_raw": 0.05026322230696678,
+  "brier_adjusted_oof": 0.051616534966401124,
+  "tiers": {
+    "novel": {
+      "n": 3141,
+      "accuracy": 0.8271251193887297,
+      "mean_raw_confidence": 0.8587499260902405,
+      "mean_adj_confidence": 0.8307181935745767,
+      "ece_raw": 0.03162476411863179,
+      "ece_adj": 0.016163199099802565
+    },
+    "related": {
+      "n": 9439,
+      "accuracy": 0.9360101705689162,
+      "mean_raw_confidence": 0.9427353143692017,
+      "mean_adj_confidence": 0.9380401625486868,
+      "ece_raw": 0.013754711573325282,
+      "ece_adj": 0.01774901902916914
+    },
+    "familiar": {
+      "n": 3145,
+      "accuracy": 0.9828298887122416,
+      "mean_raw_confidence": 0.9756837487220764,
+      "mean_adj_confidence": 0.9785880683303371,
+      "ece_raw": 0.009918104332467545,
+      "ece_adj": 0.009545504578412248
+    }
+  }
+}

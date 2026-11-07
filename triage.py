@@ -45,7 +45,7 @@ from core.motifs import MotifDatabase
 from core.catalytic import CatalyticPredictor
 from core.enzymes_classifier import EnzymeClassifier
 from core.scoring import ConfidenceScorer
-from ml.novelty import load_if_built
+from ml.novelty import load_for_model
 from ml.predictor import EnzymePredictor
 
 DEFAULT_ML_MODEL = ROOT / "ml" / "models" / "enzyme_classifier_xgb.pkl"
@@ -113,11 +113,11 @@ def run_triage(fasta_path: str, ml_model_path: str | None = DEFAULT_ML_MODEL):
     if ml_model_path and Path(ml_model_path).exists():
         ml_predictor = EnzymePredictor(str(ml_model_path))
 
-    novelty = load_if_built() if ml_predictor is not None else None
+    novelty = load_for_model(ml_model_path) if ml_predictor is not None else None
     if ml_predictor is not None and novelty is None:
-        print("Note: no novelty model (python -m ml.novelty --build), so "
-              "nn_similarity / novelty / adj_confidence are left blank.",
-              file=sys.stderr)
+        print("Note: no novelty model built for this classifier (python -m "
+              "ml.novelty --build), so nn_similarity / novelty / adj_confidence "
+              "are left blank.", file=sys.stderr)
 
     rows = [
         triage_one(r, motif_db, catalytic_predictor, enzyme_classifier,

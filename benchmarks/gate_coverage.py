@@ -100,6 +100,7 @@ def main(argv=None) -> int:
     parser.add_argument("--delta", type=float, default=0.05)
     parser.add_argument("--splits", type=int, default=200)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--name", default="gate_coverage", help="result file stem")
     parser.add_argument("--out", default=str(ROOT / "benchmarks" / "results"))
     args = parser.parse_args(argv)
 
@@ -124,9 +125,9 @@ def main(argv=None) -> int:
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "gate_coverage.json").write_text(json.dumps(summary, indent=2))
+    (out_dir / f"{args.name}.json").write_text(json.dumps(summary, indent=2))
     md = to_markdown(summary)
-    (out_dir / "gate_coverage.md").write_text(md, encoding="utf-8")
+    (out_dir / f"{args.name}.md").write_text(md, encoding="utf-8")
     print(md)
     return 0
 

@@ -1,0 +1,38 @@
+{
+  "target": 0.95,
+  "delta": 0.05,
+  "n_rows": 15725,
+  "n_clusters": 3659,
+  "n_splits": 200,
+  "accuracy": 0.9236248012718601,
+  "settings": {
+    "0.2": {
+      "row-level": {
+        "cluster_recall_held": 0.205,
+        "row_recall_held": 0.625,
+        "mean_threshold": 0.6665033350000001,
+        "mean_compute_saved": 0.08101192388758095
+      },
+      "cluster-aware": {
+        "cluster_recall_held": 0.93,
+        "row_recall_held": 1.0,
+        "mean_threshold": 0.566925215,
+        "mean_compute_saved": 0.046235675138000615
+      }
+    },
+    "0.5": {
+      "row-level": {
+        "cluster_recall_held": 0.04,
+        "row_recall_held": 0.625,
+        "mean_threshold": 0.6680349250000001,
+        "mean_compute_saved": 0.0804008738957576
+      },
+      "cluster-aware": {
+        "cluster_recall_held": 0.885,
+        "row_recall_held": 1.0,
+        "mean_threshold": 0.577759035,
+        "mean_compute_saved": 0.05053768403027913
+      }
+    }
+  }
+}

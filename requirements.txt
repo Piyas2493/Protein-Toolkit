@@ -11,3 +11,6 @@ meeko>=0.8.0
 gemmi>=0.7.0
 pdb2pqr>=3.7.0
 propka>=3.5.1
+
+# Optional, for the ESM-1b EC classifier (ml/plm_classifier.py); not needed otherwise:
+#   torch  fair-esm   (+ the 7.8 GB esm1b_t33_650M_UR50S.pt weights, see README)

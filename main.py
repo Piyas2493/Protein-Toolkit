@@ -2,6 +2,7 @@
 ProteinToolkit Main Pipeline
 """
 
+import os
 from pathlib import Path
 import sys
 
@@ -24,7 +25,7 @@ from structure.analyzer import StructureAnalyzer
 from structure.fetch import fetch_pdb, looks_like_pdb_id
 
 # Machine Learning
-from ml.novelty import load_if_built
+from ml.novelty import load_for_model
 from ml.predictor import EnzymePredictor
 
 
@@ -309,6 +310,12 @@ model_path = (
 
 )
 
+# The much more accurate ESM-1b classifier is opt-in because it needs torch,
+# fair-esm and the 7.8 GB ESM-1b weights (see README):
+#   set PROTEINTOOLKIT_EC_MODEL=ml/models/enzyme_classifier_plm.pkl
+if os.environ.get("PROTEINTOOLKIT_EC_MODEL"):
+    model_path = Path(os.environ["PROTEINTOOLKIT_EC_MODEL"])
+
 try:
 
     ml_predictor = EnzymePredictor(
@@ -349,7 +356,7 @@ try:
 
     # Novelty-aware confidence: how close is this sequence to anything the
     # model was trained on, and what accuracy does that imply?
-    novelty_model = load_if_built()
+    novelty_model = load_for_model(model_path)
 
     if novelty_model is not None:
 
@@ -366,13 +373,14 @@ try:
         print(f"Novelty-adjusted confidence        : {nv['adj_confidence']:.3f}")
 
         if tier_acc is not None:
-            print(f"On held-out sequences this novel, the model was right "
-                  f"{tier_acc:.0%} of the time.")
+            print(f"On held-out sequences in the '{nv['novelty']}' tier, the "
+                  f"model was right {tier_acc:.0%} of the time.")
 
     else:
 
         print()
-        print("(Run `python -m ml.novelty --build` for novelty-aware confidence.)")
+        print("(No novelty model for this classifier: `python -m ml.novelty --build` "
+              "builds one for the default XGBoost model.)")
 
 except FileNotFoundError as error:
 

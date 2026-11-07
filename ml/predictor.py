@@ -70,6 +70,17 @@ class EnzymePredictor:
 
     def predict_sequence(self, sequence):
 
+        # Embedding-based models (ml/plm_classifier.py) work from the sequence
+        # itself rather than the hand-built feature table.
+        if getattr(self.model, "needs_sequence_embedding", False):
+            probs = self.model.predict_proba_sequence(sequence)
+            classes = list(self.model.classes_)
+            return {
+                "prediction": classes[int(np.argmax(probs))],
+                "probabilities": {c: float(p) for c, p in zip(classes, probs)},
+                "features": {},
+            }
+
         features = self.feature_extractor.extract(
             sequence, include_dipeptides=self.include_dipeptides,
         )

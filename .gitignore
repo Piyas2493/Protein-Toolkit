@@ -37,3 +37,6 @@ bin/*
 
 # Downloaded PDB structures (cached from RCSB, not source)
 outputs/pdb_cache/
+
+ml/training/esm1b_shards/
+ml/training/*.npy

@@ -118,3 +118,28 @@ spans (extrapolating to similarity ~0 or ~1 is unvalidated), similarity is a
 k-mer proxy that misses remote homology, and the fit describes this one model
 and must be rebuilt whenever the classifier is retrained.
 
+## 6. ESM-1b embedding classifier — accuracy and calibration
+
+```bash
+python -m ml.training.embed_esm1b_dataset --weights /path/to/esm1b_t33_650M_UR50S.pt   # resumable, ~85 min on an 8 GB GPU
+python -m ml.training.train_plm_classifier --weights /path/to/esm1b_t33_650M_UR50S.pt
+python -m ml.novelty --build --model ml/models/enzyme_classifier_plm.pkl
+python -m ml.evaluation --model ml/models/enzyme_classifier_plm.pkl
+```
+
+Mean ESM-1b (layer 33) embeddings of every sequence feed a classifier trained on
+the same cluster-aware split as the XGBoost model, so the test sets are
+identical. The classifier (logistic regression vs a one-hidden-layer MLP, with
+its early-stopping epoch) is chosen on a cluster-grouped validation split
+carved from the training data, one temperature is fitted there so that
+confidence matches accuracy, and the test set is used once. Output:
+`results/plm_classifier.{json,md}` and
+`results/novelty_calibration_enzyme_classifier_plm.{json,md}`.
+
+What it does not show: the language model was pretrained (without labels) on
+UniRef50, which contains relatives of nearly every test sequence, and it finds
+remote homologs the 5-mer clustering cannot, so accuracy on the held-out set
+overstates performance on sequences with no relatives (it is ~78% in the least
+similar fifth). Training is single-seed; the two runs differ by about 2 points.
+ESM-1b is MIT-licensed (Meta).
+

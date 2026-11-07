@@ -50,7 +50,8 @@ single stage.
 - **Sequence triage** (`main.py`, `triage.py`): composition and physico-chemical
   features, motif and catalytic-residue rules, EC-class prediction (XGBoost
   on 430 sequence-derived features, trained on UniProt [@uniprot2023]
-  reviewed entries), batch ranking of FASTA files.
+  reviewed entries; or, opt-in, a classifier on frozen ESM-1b embeddings
+  [@rives2021esm]), batch ranking of FASTA files.
 - **Structure** (`structure/`): PDB parsing and fetching, contact-based pocket
   scoring, and a centroid-distance check that candidate catalytic residues
   are close together in 3D.
@@ -144,6 +145,27 @@ mild overconfidence. The grouping is a k-mer proxy for CD-HIT
 [@li2006cdhit] or MMseqs2 [@steinegger2017mmseqs2] and will not catch remote
 homologs, so 66% is still likely optimistic for truly novel folds.
 
+**An optional protein-language-model classifier.** Replacing hand-built
+sequence features by mean ESM-1b embeddings [@rives2021esm] and training a
+one-hidden-layer classifier on them (same cluster-aware split, model and
+early-stopping epoch chosen on a cluster-grouped validation split inside the
+training data, one temperature fitted there, test set used once) raises
+held-out accuracy from 66% to 92.4%, and to 94.2% in a second run trained on
+less data, so the two runs differ by about two points of single-seed
+variance. Mean confidence is 0.933 and expected calibration error 0.0096
+(0.043 before temperature scaling), so the higher confidence is earned: 81% of
+sequences receive confidence of at least 0.9 and are right 98.8% of the time.
+By 5-mer similarity to the training families the accuracy is 82.7%, 93.6% and
+98.3% for novel, related and familiar sequences. Two caveats bound these
+numbers. The language model was pretrained without labels on UniRef50, which
+contains relatives of nearly every test sequence, and it recognises remote
+homologs that our 5-mer clustering cannot separate; in the fifth of test
+sequences least similar to training in embedding space, accuracy is 78% and
+confidence runs about 8 points high. And the novelty recalibration that
+repairs the feature-based model does not help here (calibration error 0.0096
+against 0.0098 out-of-fold), because the embeddings already encode novelty.
+The classifier needs the 650M-parameter model at inference, so it is opt-in.
+
 **Novelty-aware confidence.** The held-out sequences still differ in how close
 they are to the training data, and accuracy follows that closely. Splitting
 them by 5-mer similarity to the nearest training family, the model is right
@@ -182,6 +204,6 @@ policy requires.
 
 # Acknowledgements
 
-AUTHOR TO COMPLETE.
+AUTHOR TO COMPLETE: funding, other acknowledgements.
 
 # References
