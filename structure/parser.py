@@ -17,12 +17,22 @@ def parse_pdb(pdb_file):
     atoms = []
     chains = {}
     ligands = {}
+    modified = {}
 
     with open(pdb_file, "r", encoding="utf-8") as file:
 
         for line in file:
 
             record = line[:6].strip()
+
+            # MODRES: a modified residue and the standard residue it derives from.
+            # Columns: 13-15 modified name, 17 chain, 19-22 number, 25-27 parent.
+            if record == "MODRES":
+                try:
+                    modified[(line[16].strip(), int(line[18:22]))] = line[24:27].strip()
+                except (ValueError, IndexError):
+                    pass
+                continue
 
             if record not in ("ATOM", "HETATM"):
                 continue
@@ -106,6 +116,8 @@ def parse_pdb(pdb_file):
 
         chains=list(chains.values()),
 
-        ligands=list(ligands.values())
+        ligands=list(ligands.values()),
+
+        modified_residues=modified
 
     )

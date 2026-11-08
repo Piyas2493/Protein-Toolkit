@@ -22,8 +22,10 @@ NOT a probability. Multi-evidence ordering, not a magic threshold.
 """
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from ligand import Ligand
@@ -69,6 +71,11 @@ class PoseAnalysis:
     # PAIRS, which a small molecule near a few residues inflates).
     n_hbond_residues: int = 0
     n_nonpolar_residues: int = 0
+    # Estimated probability that this pose is within 2 A of the true binding
+    # pose (None when no fitted model applies, e.g. the mock engine), and the
+    # earlier hand-written rule label, kept for comparison.
+    plausibility: Optional[float] = None
+    rule_label: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -88,6 +95,8 @@ class PoseAnalysis:
             "active_overlap_ratio": round(self.active_overlap_ratio, 3),
             "pocket_occupancy": round(self.pocket_occupancy, 3),
             "overall": self.overall,
+            "plausibility": None if self.plausibility is None else round(self.plausibility, 3),
+            "rule_label": self.rule_label,
             "contacts": [
                 {
                     "protein_atom": c.protein_atom,
@@ -127,6 +136,56 @@ class PoseAnalysisReport:
 
 
 # ----------------------------------------------------------------------
+# Pose plausibility: a fitted estimate of P(pose is right)
+# ----------------------------------------------------------------------
+
+PLAUSIBILITY_FILE = Path(__file__).resolve().parent.parent / "database" / "pose_plausibility.json"
+STRONG_AT, MODERATE_AT = 0.5, 0.25
+
+
+class PosePlausibility:
+    """Logistic model of P(pose within 2 A of the crystal pose), fitted by
+    `python -m benchmarks.pose_validation_analysis fit` to docked poses of
+    complexes picked by rule from RCSB, each labelled by its true RMSD.
+
+    Why not the old hand-written label: on those poses it separated right from
+    wrong poses at AUC 0.63-0.70, against 0.82 (leave-one-complex-out) for this
+    model, and a pose it called STRONG was right only about a fifth to a
+    quarter of the time. See benchmarks/results/pose_validation.md for the
+    numbers and the small sample they rest on.
+
+    Inputs are the pose's own evidence plus its score gap to the best pose of
+    the same docking run, so it needs the whole run's poses, not one pose.
+    """
+
+    def __init__(self, spec: Dict[str, Any]):
+        self.features = spec["features"]
+        self.mean = spec["mean"]
+        self.scale = spec["scale"]
+        self.coef = spec["coef"]
+        self.intercept = spec["intercept"]
+
+    @classmethod
+    def load(cls, path: Path = PLAUSIBILITY_FILE) -> Optional["PosePlausibility"]:
+        try:
+            return cls(json.loads(Path(path).read_text(encoding="utf-8")))
+        except (OSError, ValueError, KeyError):
+            return None
+
+    def probability(self, **values: float) -> float:
+        z = self.intercept
+        for name, mu, sd, w in zip(self.features, self.mean, self.scale, self.coef):
+            z += w * (float(values[name]) - mu) / sd
+        return 1.0 / (1.0 + math.exp(-z))
+
+    @staticmethod
+    def label(p: float) -> str:
+        return "STRONG" if p >= STRONG_AT else "MODERATE" if p >= MODERATE_AT else "WEAK"
+
+
+_PLAUSIBILITY = PosePlausibility.load()
+
+# ----------------------------------------------------------------------
 # Analyzer
 # ----------------------------------------------------------------------
 
@@ -153,10 +212,17 @@ class PoseAnalyzer:
         contact_cutoff: float = 4.0,
         clash_cutoff: float = 2.0,
         hbond_distance: float = 3.5,
+        aromatic_hydrophobic: bool = True,
     ):
         self.contact_cutoff = contact_cutoff
         self.clash_cutoff = clash_cutoff
         self.hbond_distance = hbond_distance
+        # An aromatic ring carbon packed against Val/Leu/Ile/Ala/Met/Pro is as
+        # hydrophobic as an aliphatic one. The earlier code only counted
+        # NON-aromatic carbons, so an aromatic ligand (benzamidine in trypsin's
+        # S1 pocket, for one) never showed nonpolar enclosure. False restores
+        # that behaviour; benchmarks/pose_validation.py compares the two.
+        self.aromatic_hydrophobic = aromatic_hydrophobic
 
     def analyze(
         self,
@@ -186,6 +252,19 @@ class PoseAnalyzer:
                 pose, receptor_atoms, pocket, active_set,
             )
             report.analyses.append(pa)
+
+        # Replace the rule label by the fitted plausibility, but only for a
+        # real docking engine: the model was fitted to Vina poses and says
+        # nothing about the mock engine's invented coordinates.
+        if _PLAUSIBILITY is not None and getattr(result, "engine", "") == "vina":
+            best_score = min(pa.score for pa in report.analyses)
+            for pose, pa in zip(result.poses, report.analyses):
+                pa.plausibility = _PLAUSIBILITY.probability(
+                    score=pa.score, score_gap=pa.score - best_score,
+                    n_clashes=pa.n_clashes, n_hbond_residues=pa.n_hbond_residues,
+                    n_nonpolar_residues=pa.n_nonpolar_residues, n_contacts=pa.n_contacts,
+                    heavy_atoms=len(pose.ligand.atoms), pocket_occupancy=pa.pocket_occupancy)
+                pa.overall = _PLAUSIBILITY.label(pa.plausibility)
 
         # Rank by combined evidence
         ranked = sorted(
@@ -303,6 +382,7 @@ class PoseAnalyzer:
             warnings=warnings,
             n_hbond_residues=len(hbond_residues),
             n_nonpolar_residues=len(nonpolar_residues),
+            rule_label=overall,
         )
 
     # ------------------------------------------------------------------
@@ -335,7 +415,8 @@ class PoseAnalyzer:
         if lig_atom.aromatic and rec_res in {"PHE", "TYR", "TRP", "HIS"} and d <= 5.0:
             return "Aromatic"
 
-        if lig_el == "C" and not lig_atom.aromatic and rec_res in {"ALA", "VAL", "LEU", "ILE", "MET", "PRO"} and d <= 4.5:
+        if (lig_el == "C" and (self.aromatic_hydrophobic or not lig_atom.aromatic)
+                and rec_res in {"ALA", "VAL", "LEU", "ILE", "MET", "PRO"} and d <= 4.5):
             return "Hydrophobic"
 
         if rec_name in _SULFUR_ATOMS and lig_el in {"O", "N"}:

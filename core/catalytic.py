@@ -1,8 +1,22 @@
 """
 Catalytic residue prediction engine
+
+A catalytic system (serine / cysteine / aspartic / metalloprotease) is reported
+only when the sequence contains a CONSERVED ACTIVE-SITE MOTIF for it
+(database/catalytic_sites.json, "motifs"). The earlier rule fired whenever the
+protein merely contained enough His/Ser/Asp... residues somewhere, which nearly
+every protein does, so it called almost everything a protease. Each hit now
+carries the matching motif and position as evidence.
+
+The motifs are high-precision and partial-recall: benchmarks/catalytic_validation.py
+measures both against UniProt EC subclasses. A protease from a family none of
+the motifs covers is NOT reported, so no hit is not evidence that a protein is
+not a protease. (Rules without a "motifs" list keep the composition-only
+behaviour.)
 """
 
 import json
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -58,14 +72,30 @@ class CatalyticPredictor:
 
             required = Counter(rule["residues"])
 
-            if all(counts[r] >= n for r, n in required.items()):
+            # Necessary, not sufficient: the residue types must be present.
+            if not all(counts[r] >= n for r, n in required.items()):
+                continue
 
-                # Copy (not the shared rule dict) with confidence rescaled
-                # from the database's 0-1 scale to the 0-100 scale every
-                # other predictor module uses.
-                hits.append({
-                    **rule,
-                    "confidence": round(rule["confidence"] * 100),
-                })
+            evidence = []
+            if "motifs" in rule:
+                for motif in rule["motifs"]:
+                    for match in re.finditer(motif["regex"], sequence):
+                        evidence.append({
+                            "motif": motif["name"],
+                            "start": match.start() + 1,
+                            "end": match.end(),
+                            "sequence": match.group(),
+                        })
+                if not evidence:
+                    continue      # composition alone is not evidence
+
+            # Copy (not the shared rule dict) with confidence rescaled
+            # from the database's 0-1 scale to the 0-100 scale every
+            # other predictor module uses.
+            hits.append({
+                **rule,
+                "confidence": round(rule["confidence"] * 100),
+                "evidence": evidence,
+            })
 
         return hits

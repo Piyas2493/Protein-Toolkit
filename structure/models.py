@@ -3,7 +3,7 @@ ProteinToolkit Structure Models
 """
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import Dict, List, Tuple
 
 
 @dataclass
@@ -40,4 +40,8 @@ class ProteinStructure:
     atoms: List[Atom] = field(default_factory=list)
     ligands: List[Ligand] = field(default_factory=list)
     chains: List[Chain] = field(default_factory=list)
+    # Residues the file records as chemically modified (MODRES), e.g. an
+    # oxidised catalytic cysteine stored as HETATM CSD: (chain, number) -> the
+    # standard parent residue name, here "CYS". Needed to read such a chain.
+    modified_residues: Dict[Tuple[str, int], str] = field(default_factory=dict)
     

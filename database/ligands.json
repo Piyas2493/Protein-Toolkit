@@ -11,7 +11,7 @@
     {
         "name":"Zn2+",
         "family":"Metal Ion",
-        "enzyme_classes":["Hydrolase"],
+        "enzyme_classes":["Metalloprotease"],
         "motifs":["HEXXH Metalloprotease"],
         "functions":["Zinc Metalloprotease"],
         "confidence":94

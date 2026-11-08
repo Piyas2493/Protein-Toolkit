@@ -1,0 +1,30 @@
+ProteinToolkit example. Produced by running, from the repository root:
+
+    python triage.py Examples/example.fasta --out triage.csv
+
+Examples/example.fasta holds four real proteins: a serine protease (3PTB), a glycosidase (1LYZ),
+a zinc lyase (1CA2) and a NON-enzyme (1STP, streptavidin). Rows are ranked by triage_score.
+
+header length rule_enzyme_class ml_enzyme_class ml_confidence novelty  adj_confidence triage_score
+1CA2   259    Lyase             EC4             0.9938        familiar 0.9958         35          
+3PTB   223    Hydrolase         EC3             0.9998        familiar 0.9999         31          
+1LYZ   129    Hydrolase         EC3             0.997         familiar 0.9992         19          
+1STP   159                      EC3             0.9335        related  0.8956         15          
+
+Note the last row: the EC classifier knows only six enzyme classes and has no 'not an enzyme'
+option, so it calls streptavidin (not an enzyme) EC3 with 0.93 confidence. The triage_score, which
+also weighs motifs and catalytic evidence, ranks it last; use it, not the ML class alone, to
+decide what is an enzyme.
+
+Catalytic systems reported by the sequence-only rule layer (core/catalytic.py), with the
+active-site motif each rests on. No line means no motif matched, which is NOT proof that the
+protein is not a protease (the motifs cover roughly 30-90% of each protease family):
+
+  3PTB: Serine Protease Triad (95% measured precision) - Trypsin-fold His loop (PROSITE PS00134) at residues 36-41 (VSAAHC)
+  1LYZ: none
+  1CA2: none
+  1STP: none
+
+Reading it: ml_enzyme_class is the classifier's call; novelty says how close the sequence is to the
+training data and adj_confidence is the confidence recalibrated for that. They are estimates, not
+ground truth. See the README Validation section for the measured accuracy of each column.

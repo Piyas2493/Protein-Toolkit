@@ -1,37 +1,55 @@
 [
-    {
-        "name": "Serine Protease Triad",
-        "residues": ["SER", "HIS", "ASP"],
-        "pattern": "S-H-D",
-        "function": "Peptide bond hydrolysis",
-        "enzyme_class": "Hydrolase",
-        "confidence": 0.95
-    },
-
-    {
-        "name": "Cysteine Protease Dyad",
-        "residues": ["CYS", "HIS"],
-        "pattern": "C-H",
-        "function": "Proteolysis",
-        "enzyme_class": "Hydrolase",
-        "confidence": 0.93
-    },
-
-    {
-        "name": "Aspartic Protease",
-        "residues": ["ASP", "ASP"],
-        "pattern": "D-D",
-        "function": "Acid catalysis",
-        "enzyme_class": "Hydrolase",
-        "confidence": 0.92
-    },
-
-    {
-        "name": "Metalloprotease",
-        "residues": ["HIS", "GLU", "HIS"],
-        "pattern": "H-E-H",
-        "function": "Metal-assisted catalysis",
-        "enzyme_class": "Metalloprotease",
-        "confidence": 0.95
-    }
+  {
+    "name": "Serine Protease Triad",
+    "residues": ["SER", "HIS", "ASP"],
+    "pattern": "S-H-D",
+    "function": "Peptide bond hydrolysis",
+    "enzyme_class": "Hydrolase",
+    "confidence": 0.95,
+    "motifs": [
+      {"name": "Trypsin-fold His loop (PROSITE PS00134)", "regex": "[LIVM][ST]A[STAG]HC", "sites": [{"offset": 4, "residue": "HIS"}]},
+      {"name": "Trypsin-fold Ser loop (PROSITE PS00135)", "regex": "[DNSTAGC][GSTAPIMVQH].{2}G[DE]SG[GS][SAPHV][LIVMFYWH][LIVMFYSTANQH]", "sites": [{"offset": 6, "residue": "SER"}]},
+      {"name": "Chymotrypsin-fold Ser core (G-D/E-S-G-G/S)", "regex": "G[DE]SG[GS]", "sites": [{"offset": 2, "residue": "SER"}]},
+      {"name": "Subtilase Ser loop (G-T/S-S-M-A-A-P)", "regex": "G[TS]S[MIVLA][AS][AST]P", "sites": [{"offset": 2, "residue": "SER"}]},
+      {"name": "Subtilase His loop (H-G/N-S/T-x-V/I/C-S/A-G-x-I/V)", "regex": "H[GN][ST].[VIC][SAGTC][GS].[LIVMA]", "sites": [{"offset": 0, "residue": "HIS"}]}
+    ]
+  },
+  {
+    "name": "Cysteine Protease Dyad",
+    "residues": ["CYS", "HIS"],
+    "pattern": "C-H",
+    "function": "Proteolysis",
+    "enzyme_class": "Hydrolase",
+    "confidence": 0.97,
+    "motifs": [
+      {"name": "Papain-fold Cys loop (PROSITE PS00139)", "regex": "Q.{3}G.C[YW].{2}[STAGC][STAGC]", "sites": [{"offset": 6, "residue": "CYS"}]},
+      {"name": "Papain-fold Asn loop (PROSITE PS00640)", "regex": "[FYCH][WI][LIVT].[KRQAG]N[ST]W.{3}[FYW]G.{2}G[LFYW][LIVMF]"},
+      {"name": "Caspase Cys loop (Q-A-C-R/Q/G-G/E)", "regex": "QAC[RQG][GE]", "sites": [{"offset": 2, "residue": "CYS"}]}
+    ]
+  },
+  {
+    "name": "Aspartic Protease",
+    "residues": ["ASP", "ASP"],
+    "pattern": "D-D",
+    "function": "Acid catalysis",
+    "enzyme_class": "Hydrolase",
+    "confidence": 0.9,
+    "motifs": [
+      {"name": "Pepsin-fold active-site Asp loop (PROSITE PS00141)", "regex": "[LIVMFGAC][LIVMTADN][LIVFSA]D[ST]G[STAV][STAPDENQ].[LIVMFSTNC].[LIVMFGTA]", "sites": [{"offset": 3, "residue": "ASP"}]},
+      {"name": "Retroviral/pepsin D-T/S-G core", "regex": "[LIVMF][LIVMFA]D[ST]G[STA]", "sites": [{"offset": 2, "residue": "ASP"}]}
+    ]
+  },
+  {
+    "name": "Metalloprotease",
+    "residues": ["HIS", "GLU", "HIS"],
+    "pattern": "H-E-H",
+    "function": "Metal-assisted catalysis",
+    "enzyme_class": "Metalloprotease",
+    "confidence": 0.92,
+    "motifs": [
+      {"name": "Neutral zinc metallopeptidase HEXXH (PROSITE PS00142)", "regex": "[GSTALIVN][^PCHR][^KND]HE[LIVMFYW][^DEHRKP]H[LIVMFYWGSPQ]", "sites": [{"offset": 3, "residue": "HIS"}, {"offset": 4, "residue": "GLU"}, {"offset": 6, "residue": "HIS"}]},
+      {"name": "Zinc HEXXH with small/hydrophobic third residue", "regex": "HE[GAVLIMFST].H", "sites": [{"offset": 0, "residue": "HIS"}, {"offset": 1, "residue": "GLU"}, {"offset": 4, "residue": "HIS"}]},
+      {"name": "Metzincin extended zinc-binding motif (HEXXHXXGXXH)", "regex": "HE.{2}H.{2}G.{2}H", "sites": [{"offset": 0, "residue": "HIS"}, {"offset": 1, "residue": "GLU"}, {"offset": 4, "residue": "HIS"}, {"offset": 10, "residue": "HIS"}]}
+    ]
+  }
 ]

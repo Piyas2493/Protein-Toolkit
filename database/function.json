@@ -13,7 +13,7 @@
 
     {
         "name":"Zinc Metalloprotease",
-        "enzyme_class":"Hydrolase",
+        "enzyme_class":"Metalloprotease",
         "motifs":[
             "HEXXH Metalloprotease"
         ],

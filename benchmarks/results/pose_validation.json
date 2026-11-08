@@ -1,0 +1,112 @@
+{
+  "n_complexes": 30,
+  "n_poses": 243,
+  "pose_correct_rate": 0.12757201646090535,
+  "vina_top1_success": 0.5,
+  "n_complexes_with_a_correct_pose": 21,
+  "pose_auc": {
+    "vina score": 0.7143183201460743,
+    "label (legacy)": 0.6954503956177724,
+    "label (fixed)": 0.6328362751065124,
+    "fitted model (leave-one-complex-out)": 0.8174071819841754,
+    "fitted model, legacy nonpolar count": 0.8231892878880097
+  },
+  "top1_auc": {
+    "vina score": 0.8044444444444445,
+    "label (legacy)": 0.731111111111111,
+    "label (fixed)": 0.7222222222222221,
+    "fitted model (leave-one-complex-out)": 0.7822222222222223
+  },
+  "per_label": {
+    "legacy": {
+      "STRONG": {
+        "n": 56,
+        "share_correct": 0.26785714285714285
+      },
+      "MODERATE": {
+        "n": 99,
+        "share_correct": 0.12121212121212122
+      },
+      "WEAK": {
+        "n": 88,
+        "share_correct": 0.045454545454545456
+      }
+    },
+    "fixed": {
+      "STRONG": {
+        "n": 85,
+        "share_correct": 0.18823529411764706
+      },
+      "MODERATE": {
+        "n": 83,
+        "share_correct": 0.13253012048192772
+      },
+      "WEAK": {
+        "n": 75,
+        "share_correct": 0.05333333333333334
+      }
+    }
+  },
+  "fitted_bands": {
+    "(-0.001, 0.25]": {
+      "n": 206,
+      "share_correct": 0.06796116504854369
+    },
+    "(0.25, 0.5]": {
+      "n": 22,
+      "share_correct": 0.3181818181818182
+    },
+    "(0.5, 0.75]": {
+      "n": 11,
+      "share_correct": 0.5454545454545454
+    },
+    "(0.75, 1.0]": {
+      "n": 4,
+      "share_correct": 1.0
+    }
+  },
+  "pose_auc_ci95": {
+    "vina score": [
+      0.624481672789076,
+      0.8355720230473752
+    ],
+    "label (legacy)": [
+      0.6174472700574022,
+      0.7832624422442244
+    ],
+    "label (fixed)": [
+      0.5469339274113919,
+      0.7310552226027397
+    ],
+    "fitted model (leave-one-complex-out)": [
+      0.7340491604656486,
+      0.8998718275476273
+    ]
+  },
+  "fitted_minus_fixed_label_ci95": [
+    0.0908213057920978,
+    0.28197606144182874
+  ],
+  "top1_fitted_bands": {
+    "(-0.001, 0.25]": {
+      "n": 14,
+      "share_correct": 0.21428571428571427
+    },
+    "(0.25, 0.5]": {
+      "n": 7,
+      "share_correct": 0.5714285714285714
+    },
+    "(0.5, 0.75]": {
+      "n": 5,
+      "share_correct": 0.8
+    },
+    "(0.75, 1.0]": {
+      "n": 4,
+      "share_correct": 1.0
+    }
+  },
+  "decision": {
+    "fitted_minus_fixed_label_auc": 0.18457090687766298,
+    "adopt_fitted_model": true
+  }
+}

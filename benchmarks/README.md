@@ -143,3 +143,70 @@ overstates performance on sequences with no relatives (it is ~78% in the least
 similar fifth). Training is single-seed; the two runs differ by about 2 points.
 ESM-1b is MIT-licensed (Meta).
 
+## 7. Pose plausibility — does the pose label predict whether the pose is right?
+
+```bash
+python -m benchmarks.pose_validation select      # sample complexes from RCSB by rule (network)
+python -m benchmarks.pose_validation dock        # dock each ligand into its own site; resumable
+python -m benchmarks.pose_validation_analysis    # AUCs, bootstrap intervals, calibration
+python -m benchmarks.pose_validation_analysis fit    # write database/pose_plausibility.json
+```
+
+Complexes are chosen by rule (X-ray, <= 2.0 A, one protein chain, one bound
+small molecule that is not a common additive or ion, 120-350 Da, 8-28 heavy
+atoms, with a ring; fixed random seed; sampled from the first 10,000 matches),
+not by hand. Each ligand is docked back into its own site and every pose gets
+its true RMSD to the crystal pose (correct = within 2 A). Output:
+`results/pose_validation.{json,md}`, per-pose rows in
+`results/pose_validation_poses.csv`. The decision rule for adopting the fitted
+model (leave-one-complex-out AUC more than 0.05 above the rule-based label's)
+was fixed before the results were seen.
+
+What it does not show: 30 complexes is small (see the bootstrap intervals);
+the 8 of 38 selected entries that failed to dock (missing files, ligand not on
+the protein chain) are dropped, which may favour easy cases; and a correct
+pose is not a binding prediction.
+
+## 8. Catalytic-system rules — when it says "serine protease", is it one?
+
+```bash
+python -m benchmarks.catalytic_validation fetch               # primary set, from UniProt
+python -m benchmarks.catalytic_validation fetch --holdout     # a second, disjoint draw
+python -m benchmarks.catalytic_validation evaluate            # writes results/catalytic_validation.*
+python -m benchmarks.catalytic_validation evaluate --holdout  # the out-of-sample numbers
+```
+
+UniProt EC subclasses give ground truth: 3.4.21 serine, 3.4.22 cysteine,
+3.4.23 aspartic, 3.4.24 metallo-proteases, against non-peptidase hydrolases,
+oxidoreductases, transferases and lyases/isomerases/ligases as negatives. The
+old composition-only rule and the current motif engine are both scored on the
+same sequences, along with how often the downstream predictors then claim a zinc
+metalloprotease with a Zn2+ ligand. The motifs were screened on the primary
+set, so its numbers are optimistic; the held-out draw (accessions disjoint from
+the primary set) is the figure to quote.
+
+What it does not show: recall is partial because the motifs cover only some
+protease families; the labels come from EC annotation, which is itself
+imperfect; and the standalone HEXXH motif entry in `database/motifs.json` is
+looser than the catalytic rules and still produces a 2-9% false zinc claim.
+
+## 9. Active-site detection — does it find the real catalytic residues?
+
+```bash
+python -m benchmarks.active_site_validation
+```
+
+Runs the structure-based catalytic-site detector (`structure/catalytic_geometry.py`)
+on 15 classic proteases with textbook catalytic residues (numbering of the
+deposited file, written from the literature before running) and scores the right
+system, the catalytic residues recovered and any false extra systems, for the
+`strict` detector and the `legacy` geometry-only one it replaced. Seven structures
+were looked at while designing `strict` (their numbers are optimistic); eight were
+chosen afterwards. Output: `results/active_site_validation.{json,md}`.
+
+What it does not show: only four protease systems are covered, so it says nothing
+about other enzymes; 15 structures is small; the endothiapepsin truth was corrected
+after inspecting the file; actinidin is partly development (it prompted the
+modified-residue handling); and a plausible catalytic cluster is not a proven
+active site. Needs network access on first run to fetch the PDB files.
+

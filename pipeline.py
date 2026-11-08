@@ -250,6 +250,7 @@ def run_analysis(
             report.docking["best_pose"] = best.pose_id
             report.docking["best_score"] = best.score
             report.docking["overall_pose"] = best.overall
+            report.docking["pose_plausibility"] = best.plausibility
             # Top 10 interactions of the best pose
             report.interactions = [
                 {
@@ -299,24 +300,28 @@ def _overall_verdict(compat, pose_report, fusion: FusionReport) -> str:
         return compat.overall_assessment
 
     best = pose_report.ranked[0]
+    # When the fitted pose model applies, say what the label means in numbers.
+    note = ("" if best.plausibility is None else
+            f" (estimated chance the top pose is within 2 A of the true "
+            f"binding pose: {best.plausibility:.0%})")
     if best.overall == "STRONG" and compat.overall_assessment == \
             "HIGH-PRIORITY DOCKING CANDIDATE":
         return (
             "HIGH-PRIORITY DOCKING CANDIDATE — docking supports a plausible "
-            "binding mode consistent with predicted active site."
+            "binding mode consistent with predicted active site." + note
         )
     if best.overall == "STRONG":
         return (
             "POSSIBLE BINDING MODE — docking supports a plausible pose, "
-            "but compatibility evidence is mixed."
+            "but compatibility evidence is mixed." + note
         )
     if best.overall == "MODERATE":
         return (
             "WEAK / MODERATE EVIDENCE — docking produced a plausible pose, "
-            "but with limited supporting evidence."
+            "but with limited supporting evidence." + note
         )
     return (
-        "WEAK EVIDENCE — docking did not produce a clearly plausible pose."
+        "WEAK EVIDENCE — docking did not produce a clearly plausible pose." + note
     )
 
 
@@ -391,6 +396,10 @@ def main(argv: Optional[List[str]] = None) -> int:
           f"{report.docking.get('best_score', '-')}")
     print(f"Best pose assessment   : "
           f"{report.docking.get('overall_pose', '-')}")
+    p = report.docking.get("pose_plausibility")
+    if p is not None:
+        print(f"Pose plausibility      : {p:.0%} estimated chance the top pose is "
+              "within 2 A of the true pose")
     print()
     print("Overall assessment:", report.overall_assessment)
     print()

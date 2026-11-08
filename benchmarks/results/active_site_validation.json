@@ -1,0 +1,529 @@
+{
+  "development": {
+    "rows": [
+      {
+        "pdb": "3PTB",
+        "system": "Serine Protease Triad",
+        "truth": [
+          "ASP102",
+          "HIS57",
+          "SER195"
+        ],
+        "note": "bovine trypsin",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 3,
+          "residues_total": 3,
+          "false_systems": [],
+          "reported_residues": [
+            "ASP102",
+            "HIS57",
+            "SER195"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 3,
+          "false_systems": [
+            "Aspartic Protease",
+            "Cysteine Protease Dyad"
+          ],
+          "reported_residues": [
+            "ASP102",
+            "HIS57",
+            "SER214"
+          ]
+        }
+      },
+      {
+        "pdb": "5CHA",
+        "system": "Serine Protease Triad",
+        "truth": [
+          "ASP102",
+          "HIS57",
+          "SER195"
+        ],
+        "note": "bovine chymotrypsin A",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 3,
+          "residues_total": 3,
+          "false_systems": [],
+          "reported_residues": [
+            "ASP102",
+            "HIS57",
+            "SER195"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 3,
+          "false_systems": [
+            "Aspartic Protease",
+            "Cysteine Protease Dyad"
+          ],
+          "reported_residues": [
+            "ASP102",
+            "HIS57",
+            "SER214"
+          ]
+        }
+      },
+      {
+        "pdb": "1SBT",
+        "system": "Serine Protease Triad",
+        "truth": [
+          "ASP32",
+          "HIS64",
+          "SER221"
+        ],
+        "note": "subtilisin BPN'",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 3,
+          "residues_total": 3,
+          "false_systems": [],
+          "reported_residues": [
+            "ASP32",
+            "HIS64",
+            "SER221"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 0,
+          "residues_total": 3,
+          "false_systems": [
+            "Aspartic Protease"
+          ],
+          "reported_residues": [
+            "ASP36",
+            "HIS39",
+            "SER38"
+          ]
+        }
+      },
+      {
+        "pdb": "9PAP",
+        "system": "Cysteine Protease Dyad",
+        "truth": [
+          "CYS25",
+          "HIS159"
+        ],
+        "note": "papain; Cys25 is stored as OCS (modified)",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 2,
+          "false_systems": [],
+          "reported_residues": [
+            "CYS25",
+            "HIS159"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 2,
+          "false_systems": [
+            "Aspartic Protease"
+          ],
+          "reported_residues": [
+            "CYS25",
+            "HIS159"
+          ]
+        }
+      },
+      {
+        "pdb": "5PEP",
+        "system": "Aspartic Protease",
+        "truth": [
+          "ASP215",
+          "ASP32"
+        ],
+        "note": "porcine pepsin",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 2,
+          "false_systems": [],
+          "reported_residues": [
+            "ASP215",
+            "ASP32"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 0,
+          "residues_total": 2,
+          "false_systems": [
+            "Cysteine Protease Dyad",
+            "Serine Protease Triad"
+          ],
+          "reported_residues": [
+            "ASP280",
+            "ASP281"
+          ]
+        }
+      },
+      {
+        "pdb": "8TLN",
+        "system": "Metalloprotease",
+        "truth": [
+          "GLU143",
+          "HIS142",
+          "HIS146"
+        ],
+        "note": "thermolysin",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 3,
+          "residues_total": 3,
+          "false_systems": [],
+          "reported_residues": [
+            "GLU143",
+            "HIS142",
+            "HIS146"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 3,
+          "residues_total": 3,
+          "false_systems": [
+            "Aspartic Protease",
+            "Serine Protease Triad"
+          ],
+          "reported_residues": [
+            "GLU143",
+            "HIS142",
+            "HIS146"
+          ]
+        }
+      },
+      {
+        "pdb": "1HVR",
+        "system": "Aspartic Protease",
+        "truth": [
+          "ASP25"
+        ],
+        "note": "HIV-1 protease (dimer)",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 1,
+          "residues_total": 1,
+          "false_systems": [],
+          "reported_residues": [
+            "ASP25"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 0,
+          "residues_total": 1,
+          "false_systems": [
+            "Cysteine Protease Dyad"
+          ],
+          "reported_residues": [
+            "ASP29",
+            "ASP30"
+          ]
+        }
+      }
+    ],
+    "summary": {
+      "strict": {
+        "systems_reported": 7,
+        "structures": 7,
+        "residues_correct": 17,
+        "residues_total": 17,
+        "structures_with_false_systems": 0
+      },
+      "legacy": {
+        "systems_reported": 7,
+        "structures": 7,
+        "residues_correct": 9,
+        "residues_total": 17,
+        "structures_with_false_systems": 7
+      }
+    }
+  },
+  "held_out": {
+    "rows": [
+      {
+        "pdb": "3EST",
+        "system": "Serine Protease Triad",
+        "truth": [
+          "ASP102",
+          "HIS57",
+          "SER195"
+        ],
+        "note": "porcine pancreatic elastase",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 3,
+          "residues_total": 3,
+          "false_systems": [],
+          "reported_residues": [
+            "ASP102",
+            "HIS57",
+            "SER195"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 3,
+          "false_systems": [
+            "Aspartic Protease",
+            "Cysteine Protease Dyad"
+          ],
+          "reported_residues": [
+            "ASP102",
+            "HIS57",
+            "SER214"
+          ]
+        }
+      },
+      {
+        "pdb": "1PPB",
+        "system": "Serine Protease Triad",
+        "truth": [
+          "ASP102",
+          "HIS57",
+          "SER195"
+        ],
+        "note": "human alpha-thrombin",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 3,
+          "residues_total": 3,
+          "false_systems": [],
+          "reported_residues": [
+            "ASP102",
+            "HIS57",
+            "SER195"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 3,
+          "false_systems": [
+            "Aspartic Protease",
+            "Cysteine Protease Dyad"
+          ],
+          "reported_residues": [
+            "ASP102",
+            "HIS57",
+            "SER214"
+          ]
+        }
+      },
+      {
+        "pdb": "4APE",
+        "system": "Aspartic Protease",
+        "truth": [
+          "ASP215",
+          "ASP32"
+        ],
+        "note": "endothiapepsin; literature Asp35/Asp219, but THIS file uses pepsin-style numbering (35 and 219 are Ser/Thr)",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 2,
+          "false_systems": [],
+          "reported_residues": [
+            "ASP215",
+            "ASP32"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 0,
+          "residues_total": 2,
+          "false_systems": [
+            "Serine Protease Triad"
+          ],
+          "reported_residues": [
+            "ASP12",
+            "ASP8"
+          ]
+        }
+      },
+      {
+        "pdb": "1HSG",
+        "system": "Aspartic Protease",
+        "truth": [
+          "ASP25"
+        ],
+        "note": "HIV-1 protease + indinavir (dimer)",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 1,
+          "residues_total": 1,
+          "false_systems": [],
+          "reported_residues": [
+            "ASP25"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 0,
+          "residues_total": 1,
+          "false_systems": [
+            "Cysteine Protease Dyad"
+          ],
+          "reported_residues": [
+            "ASP29",
+            "ASP30"
+          ]
+        }
+      },
+      {
+        "pdb": "1CP3",
+        "system": "Cysteine Protease Dyad",
+        "truth": [
+          "CYS163",
+          "HIS121"
+        ],
+        "note": "caspase-3 + inhibitor; Cys163-His121 are 5.95 A apart here",
+        "strict": {
+          "system_reported": false,
+          "residues_correct": 0,
+          "residues_total": 2,
+          "false_systems": [],
+          "reported_residues": []
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 2,
+          "false_systems": [
+            "Aspartic Protease",
+            "Metalloprotease",
+            "Serine Protease Triad"
+          ],
+          "reported_residues": [
+            "CYS163",
+            "HIS121"
+          ]
+        }
+      },
+      {
+        "pdb": "2ACT",
+        "system": "Cysteine Protease Dyad",
+        "truth": [
+          "CYS25",
+          "HIS162"
+        ],
+        "note": "actinidin; Cys25 stored as CSD (partly development, see docstring)",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 2,
+          "false_systems": [],
+          "reported_residues": [
+            "CYS25",
+            "HIS162"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 2,
+          "false_systems": [
+            "Aspartic Protease"
+          ],
+          "reported_residues": [
+            "CYS25",
+            "HIS162"
+          ]
+        }
+      },
+      {
+        "pdb": "1PPN",
+        "system": "Cysteine Protease Dyad",
+        "truth": [
+          "CYS25",
+          "HIS159"
+        ],
+        "note": "papain, unmodified Cys25",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 2,
+          "false_systems": [],
+          "reported_residues": [
+            "CYS25",
+            "HIS159"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 2,
+          "residues_total": 2,
+          "false_systems": [
+            "Aspartic Protease"
+          ],
+          "reported_residues": [
+            "CYS25",
+            "HIS159"
+          ]
+        }
+      },
+      {
+        "pdb": "1AST",
+        "system": "Metalloprotease",
+        "truth": [
+          "GLU93",
+          "HIS92",
+          "HIS96"
+        ],
+        "note": "astacin",
+        "strict": {
+          "system_reported": true,
+          "residues_correct": 3,
+          "residues_total": 3,
+          "false_systems": [],
+          "reported_residues": [
+            "GLU93",
+            "HIS92",
+            "HIS96"
+          ]
+        },
+        "legacy": {
+          "system_reported": true,
+          "residues_correct": 0,
+          "residues_total": 3,
+          "false_systems": [
+            "Aspartic Protease"
+          ],
+          "reported_residues": [
+            "GLU103",
+            "HIS104",
+            "HIS148"
+          ]
+        }
+      }
+    ],
+    "summary": {
+      "strict": {
+        "systems_reported": 7,
+        "structures": 8,
+        "residues_correct": 16,
+        "residues_total": 18,
+        "structures_with_false_systems": 0
+      },
+      "legacy": {
+        "systems_reported": 8,
+        "structures": 8,
+        "residues_correct": 10,
+        "residues_total": 18,
+        "structures_with_false_systems": 8
+      }
+    }
+  }
+}

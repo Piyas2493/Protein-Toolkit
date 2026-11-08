@@ -59,9 +59,10 @@ single stage.
   protonation at pH 7.4 (PDB2PQR [@dolinsky2004pdb2pqr] with PROPKA
   [@olsson2011propka]) and AutoDock typing and charging (Meeko), ligand
   preparation (RDKit, Meeko), Vina docking in a box sized to the
-  ligand, heuristic pose analysis (contacts, hydrogen bonds, metal
-  coordination, clashes) producing an inspectable STRONG/MODERATE/WEAK label,
-  and library screening that prepares the receptor and pockets once.
+  ligand, pose analysis (contacts, hydrogen bonds, metal coordination,
+  clashes) feeding a fitted estimate of the probability that a pose is within
+  2 Å of the true binding pose, banded as STRONG/MODERATE/WEAK, and library
+  screening that prepares the receptor and pockets once.
 - **Reliability reporting** (`ml/novelty.py`, `core/reliability.py`,
   `ml/selective_gate.py`): each EC prediction carries its similarity to the
   nearest training family, a novelty tier and a recalibrated confidence;
@@ -126,11 +127,71 @@ II, 86% of actives but 6% of weak binders carry a primary sulfonamide (the
 zinc-binding group), and that substructure alone reaches AUC 0.90, so a
 one-line rule outperforms the docking score. We report this as a negative
 result: in this pipeline, Vina is a way to generate plausible poses in a
-known site, not to rank compounds by potency. The STRONG/MODERATE/WEAK pose
-labels do not track potency either (STRONG for 21/49 actives vs 33/49 weak
-binders on carbonic anhydrase II, 34/50 vs 29/50 on estrogen receptor α).
-Both sets are small, so intervals are wide, and measured weak binders are a
+known site, not to rank compounds by potency; the pose verdict estimates
+whether a pose is geometrically right (next paragraph), not whether the
+compound binds. Both sets are small, so intervals are wide, and measured weak binders are a
 harder negative class than property-matched decoys [@mysinger2012dude].
+
+**Pose plausibility.** A pose's STRONG/MODERATE/WEAK label is only useful if
+it tracks whether the pose is right, which redocking lets us check. We
+selected 38 crystal complexes from RCSB by rule (X-ray, at most 2.0 Å, one
+protein chain, one drug-like ligand of 8--28 heavy atoms, fixed random seed),
+docked each ligand back into its own site and measured every pose's RMSD to
+the crystal pose; 30 complexes docked (243 poses, 13% within 2 Å, and Vina's
+first pose right for 15 of 30). Our original rule-based label separated right
+from wrong poses poorly (AUC 0.63--0.70; a chemically motivated change that
+counted aromatic carbons as hydrophobic lowered it from 0.70 to 0.63).
+Replacing it with a logistic model of pose correctness over the score, its
+gap to the best pose, and contact counts gives an AUC of 0.82 (bootstrap 95%
+interval 0.73--0.90) under leave-one-complex-out cross-validation, a gain of
+0.19 over the rule-based label with the aromatic change (interval 0.09--0.28;
+0.12 over the original rule) that cleared a threshold we fixed beforehand
+(0.05). On four complexes the model never saw (35 poses)
+its AUC was 0.85, against 0.61 for the Vina score and 0.43 for the rule-based
+label.
+For each complex's top pose, the observed hit rates were 21%, 57% and 89% for
+the WEAK, MODERATE and STRONG bands (14, 7 and 9 complexes), so the
+probabilities are usable but rest on few complexes, and very small ligands
+are still rated low when correct (benzene: a correct pose rated 14%).
+
+**Catalytic-system rules.** The sequence-only rule layer originally reported a
+serine, cysteine or aspartic protease or a metalloprotease whenever the protein
+contained enough histidine, serine, aspartate or similar residues anywhere,
+which nearly every protein does. Scored against UniProt EC subclasses, that
+rule fired on every non-peptidase tested (about four systems each) and was
+right 13--15% of the time; it also drove a "zinc metalloprotease" function and
+a Zn²⁺ ligand call for every protein, serine proteases included. Requiring a
+conserved active-site motif for each system, with patterns taken from PROSITE
+and screened against labelled sequences, raises precision to 90--97% on a
+held-out draw of 2,000 sequences disjoint from those used to select the
+motifs, with recall of 35% (serine), 39% (cysteine), 45% (aspartic) and 89%
+(metallo); 2% of non-peptidases receive any hit, and the zinc claim falls from
+100% to 0% for serine and cysteine proteases and 2--9% for other non-zinc
+proteins while remaining at 89% for true metalloproteases. Recall is partial
+by construction, so the absence of a hit is not evidence against a protease.
+(The validation also caught an error in one of these patterns, written from
+memory with the wrong residue spacing: correcting it raised held-out recall for
+cysteine proteases from 31% to 39% and precision from 91% to 97%.)
+
+**Catalytic-site identification.** A structure-based detector that looks for the
+catalytic residues of these four protease systems in 3D originally accepted any
+residues of the right types lying near each other. On 15 classic proteases
+with textbook catalytic residues it named the right system but often the wrong
+residues (the serine nucleophile was wrong in trypsin, chymotrypsin, elastase
+and thrombin; both pepsin aspartates were wrong) and added false extra systems
+to every structure. Requiring the conserved sequence motif, taking the
+residues that motif marks, measuring between side-chain functional atoms and
+linking residues as a connected cluster within 5 Å, and reading modified
+residues through `MODRES`, recovers 17 of 17 catalytic residues on the seven
+structures used to design it and 16 of 18 on eight held-out structures, with no
+false systems on any of the 15. Two caveats limit this. The held-out set is
+small and was written down after the design, one structure (actinidin) led to
+the modified-residue fix and is therefore partly development, and the
+endothiapepsin truth was corrected from literature numbering to the file's own
+after inspection; and caspase-3 is missed because its catalytic cysteine and
+histidine are 5.95 Å apart in that crystal. The detector marks a plausible
+catalytic cluster for four protease systems only; it is not a general
+active-site predictor.
 
 **Leakage-aware EC classification.** Randomly splitting UniProt sequences
 lets near-duplicates land in both training and test sets. Sequences were
@@ -189,9 +250,11 @@ protonation (PDB2PQR cannot see them), cofactors receive no hydrogens or
 charges, and residues without a backbone are omitted. Vina ignores partial
 charges, so the charge assignment is inert for the scoring used here.
 Vina scores are not calibrated affinities and, as
-shown above, do not rank potent against weak binders of one target. Pose
-labels are heuristics that cannot detect a confidently wrong pose. The
-rule-based confidences are hand-tuned weights, not probabilities. The
+shown above, do not rank potent against weak binders of one target. The
+pose verdict is a modest probability estimate fitted to 30 complexes and
+cannot rule out a confidently wrong pose. The confidences of the catalytic-system
+rules are measured held-out precisions, but the motif, function and ligand
+confidences remain hand-tuned weights, not probabilities. The
 repository's README keeps this list current.
 
 # AI usage disclosure

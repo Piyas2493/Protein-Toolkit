@@ -652,3 +652,50 @@ def test_docking_engine_unavailable_falls_back():
     mgr = DockingManager(engine='auto')
     adapter = mgr._resolve_adapter()
     assert adapter.name == 'mock' or adapter.is_available()
+
+# ----------------------------------------------------------------------
+# Fitted pose plausibility (replaces the hand-written label as the verdict)
+# ----------------------------------------------------------------------
+
+def test_plausibility_model_loads_and_rewards_better_and_closer_poses():
+    from docking.pose_analysis import PosePlausibility
+
+    model = PosePlausibility.load()
+    assert model is not None
+    base = dict(score=-6.0, score_gap=0.0, n_clashes=0, n_hbond_residues=2,
+                n_nonpolar_residues=4, n_contacts=40, heavy_atoms=15,
+                pocket_occupancy=0.5)
+    worse = {**base, "score": -4.0, "score_gap": 2.0}
+    assert 0 < model.probability(**worse) < model.probability(**base) < 1
+
+
+def test_plausibility_bands_map_to_labels():
+    from docking.pose_analysis import PosePlausibility
+
+    assert [PosePlausibility.label(p) for p in (0.9, 0.5, 0.49, 0.25, 0.24, 0.0)] == [
+        "STRONG", "STRONG", "MODERATE", "MODERATE", "WEAK", "WEAK"]
+
+
+def test_mock_engine_poses_keep_the_rule_label_and_get_no_plausibility(prep, pockets, prep_ligand):
+    # The model was fitted to Vina poses; it says nothing about invented mock coordinates.
+    result = DockingManager(engine='mock').dock(
+        DockingRequest(receptor_path="ignored.pdb", ligand=prep_ligand,
+                       box=pockets[0].box, n_poses=3))
+    report = PoseAnalyzer().analyze(result, prep.receptor_atoms, pockets[0])
+    assert all(pa.plausibility is None and pa.overall == pa.rule_label
+               for pa in report.analyses)
+
+
+def test_real_engine_poses_get_a_probability_and_a_label_from_its_band(prep, pockets, prep_ligand):
+    from docking.pose_analysis import PosePlausibility
+
+    result = DockingManager(engine='mock').dock(
+        DockingRequest(receptor_path="ignored.pdb", ligand=prep_ligand,
+                       box=pockets[0].box, n_poses=4))
+    result.engine = "vina"          # pretend; the analyzer keys on the engine name
+    report = PoseAnalyzer().analyze(result, prep.receptor_atoms, pockets[0])
+    for pa in report.analyses:
+        assert 0.0 <= pa.plausibility <= 1.0
+        assert pa.overall == PosePlausibility.label(pa.plausibility)
+        assert pa.rule_label in {"STRONG", "MODERATE", "WEAK"}
+    assert report.analyses[0].to_dict()["plausibility"] is not None

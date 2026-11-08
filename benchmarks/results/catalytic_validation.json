@@ -1,0 +1,162 @@
+{
+  "n": 3200,
+  "classes": {
+    "Serine Protease Triad": 400,
+    "Cysteine Protease Dyad": 400,
+    "Aspartic Protease": 400,
+    "Metalloprotease": 400,
+    "neg:other hydrolase (EC 3.1/3.2/3.5/3.6)": 400,
+    "neg:oxidoreductase (EC 1)": 400,
+    "neg:transferase (EC 2)": 400,
+    "neg:lyase/isomerase/ligase (EC 4-6)": 400
+  },
+  "engines": {
+    "composition": {
+      "per_rule": {
+        "Serine Protease Triad": {
+          "recall": 1.0,
+          "false_hit_on_non_peptidases": 0.996875,
+          "false_hit_on_other_protease_types": 0.9933333333333333,
+          "precision_vs_all_sequences": 0.12550988390335738
+        },
+        "Cysteine Protease Dyad": {
+          "recall": 0.9975,
+          "false_hit_on_non_peptidases": 0.986875,
+          "false_hit_on_other_protease_types": 0.8916666666666667,
+          "precision_vs_all_sequences": 0.1309055118110236
+        },
+        "Aspartic Protease": {
+          "recall": 1.0,
+          "false_hit_on_non_peptidases": 0.999375,
+          "false_hit_on_other_protease_types": 1.0,
+          "precision_vs_all_sequences": 0.12503907471084713
+        },
+        "Metalloprotease": {
+          "recall": 0.9975,
+          "false_hit_on_non_peptidases": 0.991875,
+          "false_hit_on_other_protease_types": 0.965,
+          "precision_vs_all_sequences": 0.1269083969465649
+        }
+      },
+      "mean_rules_fired_per_non_peptidase": 3.975,
+      "pct_non_peptidases_with_any_hit": 100.0
+    },
+    "motif": {
+      "per_rule": {
+        "Serine Protease Triad": {
+          "recall": 0.555,
+          "false_hit_on_non_peptidases": 0.00625,
+          "false_hit_on_other_protease_types": 0.0016666666666666668,
+          "precision_vs_all_sequences": 0.9487179487179487
+        },
+        "Cysteine Protease Dyad": {
+          "recall": 0.41,
+          "false_hit_on_non_peptidases": 0.000625,
+          "false_hit_on_other_protease_types": 0.0033333333333333335,
+          "precision_vs_all_sequences": 0.9704142011834319
+        },
+        "Aspartic Protease": {
+          "recall": 0.47,
+          "false_hit_on_non_peptidases": 0.005625,
+          "false_hit_on_other_protease_types": 0.005833333333333334,
+          "precision_vs_all_sequences": 0.9215686274509803
+        },
+        "Metalloprotease": {
+          "recall": 0.84,
+          "false_hit_on_non_peptidases": 0.010625,
+          "false_hit_on_other_protease_types": 0.006666666666666667,
+          "precision_vs_all_sequences": 0.9307479224376731
+        }
+      },
+      "mean_rules_fired_per_non_peptidase": 0.023125,
+      "pct_non_peptidases_with_any_hit": 2.3125
+    }
+  },
+  "downstream_zinc_claims": {
+    "old (composition rule + function keyed to any Hydrolase)": {
+      "Serine Protease Triad": {
+        "n": 400,
+        "zinc_function": 1.0,
+        "zn_ligand": 1.0
+      },
+      "Cysteine Protease Dyad": {
+        "n": 400,
+        "zinc_function": 1.0,
+        "zn_ligand": 1.0
+      },
+      "Aspartic Protease": {
+        "n": 400,
+        "zinc_function": 1.0,
+        "zn_ligand": 1.0
+      },
+      "Metalloprotease": {
+        "n": 400,
+        "zinc_function": 1.0,
+        "zn_ligand": 1.0
+      },
+      "neg:other hydrolase (EC 3.1/3.2/3.5/3.6)": {
+        "n": 400,
+        "zinc_function": 1.0,
+        "zn_ligand": 1.0
+      },
+      "neg:oxidoreductase (EC 1)": {
+        "n": 400,
+        "zinc_function": 1.0,
+        "zn_ligand": 1.0
+      },
+      "neg:transferase (EC 2)": {
+        "n": 400,
+        "zinc_function": 1.0,
+        "zn_ligand": 1.0
+      },
+      "neg:lyase/isomerase/ligase (EC 4-6)": {
+        "n": 400,
+        "zinc_function": 1.0,
+        "zn_ligand": 1.0
+      }
+    },
+    "new (motif rule + function keyed to Metalloprotease)": {
+      "Serine Protease Triad": {
+        "n": 400,
+        "zinc_function": 0.005,
+        "zn_ligand": 0.005
+      },
+      "Cysteine Protease Dyad": {
+        "n": 400,
+        "zinc_function": 0.005,
+        "zn_ligand": 0.005
+      },
+      "Aspartic Protease": {
+        "n": 400,
+        "zinc_function": 0.0825,
+        "zn_ligand": 0.0825
+      },
+      "Metalloprotease": {
+        "n": 400,
+        "zinc_function": 0.8475,
+        "zn_ligand": 0.8475
+      },
+      "neg:other hydrolase (EC 3.1/3.2/3.5/3.6)": {
+        "n": 400,
+        "zinc_function": 0.025,
+        "zn_ligand": 0.025
+      },
+      "neg:oxidoreductase (EC 1)": {
+        "n": 400,
+        "zinc_function": 0.03,
+        "zn_ligand": 0.03
+      },
+      "neg:transferase (EC 2)": {
+        "n": 400,
+        "zinc_function": 0.015,
+        "zn_ligand": 0.015
+      },
+      "neg:lyase/isomerase/ligase (EC 4-6)": {
+        "n": 400,
+        "zinc_function": 0.015,
+        "zn_ligand": 0.015
+      }
+    }
+  },
+  "data": "catalytic_validation.csv"
+}

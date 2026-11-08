@@ -56,7 +56,7 @@ def screen_one(candidate: Candidate, prep, pockets, *, docking_engine,
                n_poses, seed) -> dict:
     row = {"name": candidate.name, "smiles": candidate.smiles,
            "valid": False, "pocket_id": "", "best_score": "",
-           "overall": "", "error": ""}
+           "overall": "", "pose_plausibility": "", "error": ""}
 
     try:
         lig = load_ligand(smiles=candidate.smiles)
@@ -88,6 +88,8 @@ def screen_one(candidate: Candidate, prep, pockets, *, docking_engine,
         best = pose_report.ranked[0]
         row["best_score"] = min(a.score for a in pose_report.analyses)
         row["overall"] = best.overall
+        if best.plausibility is not None:
+            row["pose_plausibility"] = round(best.plausibility, 3)
     else:
         warnings = ", ".join(result.warnings) if result else ""
         row["error"] = f"docking produced no poses ({warnings})"
@@ -151,7 +153,7 @@ def main(argv=None) -> int:
     )
 
     fieldnames = ["name", "smiles", "valid", "pocket_id", "best_score",
-                  "overall", "error"]
+                  "overall", "pose_plausibility", "error"]
     with open(args.out, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -159,10 +161,11 @@ def main(argv=None) -> int:
             writer.writerow(row)
 
     print(f"\nScreened {len(rows)} candidate(s) -> {args.out}\n")
-    print(f"{'Rank':<5}{'Name':<20}{'Score':<10}{'Assessment':<12}")
+    print(f"{'Rank':<5}{'Name':<20}{'Score':<10}{'Assessment':<12}{'P(pose ok)':<10}")
     for i, row in enumerate(rows[:args.top], start=1):
         print(f"{i:<5}{row['name'][:19]:<20}"
-              f"{str(row['best_score']):<10}{row['overall']:<12}")
+              f"{str(row['best_score']):<10}{row['overall']:<12}"
+              f"{('%.0f%%' % (100 * row['pose_plausibility'])) if row['pose_plausibility'] != '' else '-':<10}")
 
     print("\nIMPORTANT: docking scores are a computational prediction, "
           "not measured binding affinity.")
